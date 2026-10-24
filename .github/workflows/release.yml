@@ -62,7 +62,7 @@ jobs:
           ' CHANGELOG.md > release-notes.md
           test -s release-notes.md || echo "Versión $VERSION" > release-notes.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: Mamoney v${{ env.VERSION }}
           body_path: release-notes.md
