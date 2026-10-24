@@ -21,7 +21,7 @@ jobs:
           test "v$version" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != v$version en pyproject.toml"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
