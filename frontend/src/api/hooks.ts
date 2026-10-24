@@ -18,6 +18,7 @@ import type {
   Settings,
   Summary,
   UpcomingPayment,
+  UpdateStatus,
   Valuation,
 } from "./types";
 
@@ -112,6 +113,14 @@ export const useProjection = (
 
 export const useFxLatest = () =>
   useQuery({ queryKey: ["fx-latest"], queryFn: get<FxLatest[]>("/api/fx/latest") });
+
+export const useUpdateStatus = () =>
+  useQuery({
+    queryKey: ["updates"],
+    queryFn: get<UpdateStatus>("/api/updates"),
+    staleTime: 10 * 60_000,
+    refetchInterval: 30 * 60_000,
+  });
 
 export const useSettings = () =>
   useQuery({ queryKey: ["settings"], queryFn: get<Settings>("/api/settings") });

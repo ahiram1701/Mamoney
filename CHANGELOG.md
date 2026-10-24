@@ -6,6 +6,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- Actualizaciones desde GitHub Releases: revisión al arrancar y cada 6 h, aviso en el dashboard y en
+  la bandeja, e instalación con un clic que verifica el SHA-256, respalda la base de datos y restaura
+  la versión anterior si algo falla.
+- Ajustes → Actualizaciones: versión instalada, búsqueda manual y opción para desactivar la revisión.
+
 ## [0.1.0] - 2026-10-24
 
 ### Añadido

@@ -100,6 +100,7 @@ class SettingsUpdate(BaseModel):
     currencies: list[str] | None = None
     allowed_logins: list[str] | None = None
     projection_annual_return_pct: float | None = None
+    auto_update_check: bool | None = None
 
 
 class PinUpdate(BaseModel):

@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuthStatus } from "../api/hooks";
+import { UpdateBanner } from "./UpdateBanner";
 
 const NAV = [
   { to: "/", label: "Resumen", icon: LayoutDashboard },
@@ -106,6 +107,7 @@ export function Layout() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-10 lg:px-8">
+        <UpdateBanner />
         <Outlet />
       </main>
 

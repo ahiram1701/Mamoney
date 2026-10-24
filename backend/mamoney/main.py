@@ -14,13 +14,16 @@ from sqlmodel import Session
 from mamoney import __version__
 from mamoney.config import get_config
 from mamoney.db import get_engine, init_db
-from mamoney.routers import analytics, assets, expenses, fx, income, system
+from mamoney.routers import analytics, assets, expenses, fx, income, system, updates
 from mamoney.security import PUBLIC_PATHS, evaluate
+from mamoney.services import updater
 from mamoney.services.fx import refresh_rates
+from mamoney.settings_store import get_setting
 
 log = logging.getLogger("mamoney")
 
 FX_REFRESH_SECONDS = 6 * 60 * 60
+UPDATE_CHECK_SECONDS = 6 * 60 * 60
 
 
 async def _fx_loop() -> None:
@@ -36,12 +39,32 @@ async def _fx_loop() -> None:
         await asyncio.sleep(FX_REFRESH_SECONDS)
 
 
+async def _update_loop() -> None:
+    await asyncio.sleep(10)  # no competir con el arranque
+    while True:
+        try:
+            with Session(get_engine()) as session:
+                enabled = bool(get_setting(session, "auto_update_check"))
+            if enabled:
+                status = await asyncio.to_thread(updater.check_for_updates)
+                if status.available and status.latest:
+                    log.info("Nueva versión disponible: v%s", status.latest.version)
+        except Exception:
+            log.exception("Fallo al buscar actualizaciones")
+        await asyncio.sleep(UPDATE_CHECK_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_db()
-    task = asyncio.create_task(_fx_loop()) if get_config().fx_auto_update else None
+    cfg = get_config()
+    tasks = []
+    if cfg.fx_auto_update:
+        tasks.append(asyncio.create_task(_fx_loop()))
+    if cfg.update_check:
+        tasks.append(asyncio.create_task(_update_loop()))
     yield
-    if task:
+    for task in tasks:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
@@ -78,7 +101,7 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Frame-Options", "DENY")
         return response
 
-    for module in (assets, income, expenses, fx, analytics, system):
+    for module in (assets, income, expenses, fx, analytics, system, updates):
         app.include_router(module.router)
 
     static_dir = get_config().static_dir

@@ -165,6 +165,7 @@ export interface Settings {
   allowed_logins: string[];
   projection_annual_return_pct: number;
   pin_enabled: boolean;
+  auto_update_check: boolean;
   data_dir: string;
   version: string;
 }
@@ -175,4 +176,27 @@ export interface AuthStatus {
   is_local: boolean;
   identity: string | null;
   pin_enabled: boolean;
+}
+
+export interface ReleaseInfo {
+  version: string;
+  tag: string;
+  name: string;
+  notes: string;
+  published_at: string | null;
+  html_url: string;
+  zip_url: string | null;
+  zip_name: string | null;
+  zip_size: number | null;
+  sha256_url: string | null;
+}
+
+export interface UpdateStatus {
+  current: string;
+  latest: ReleaseInfo | null;
+  available: boolean;
+  checked_at: string | null;
+  error: string | null;
+  can_install: boolean;
+  installing: boolean;
 }

@@ -32,6 +32,7 @@ from mamoney.security import (
     make_session_token,
     verify_pin,
 )
+from mamoney.services.updater import current_version
 from mamoney.settings_store import get_setting, session_secret, set_setting
 
 router = APIRouter(prefix="/api", tags=["sistema"])
@@ -50,7 +51,7 @@ EXPORT_TABLES: list[type[SQLModel]] = [
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "version": __version__}
+    return {"status": "ok", "version": current_version()}
 
 
 @router.get("/auth/status")
@@ -94,6 +95,7 @@ def read_settings(session: SessionDep) -> dict[str, Any]:
         "allowed_logins": get_setting(session, "allowed_logins"),
         "projection_annual_return_pct": get_setting(session, "projection_annual_return_pct"),
         "pin_enabled": bool(get_setting(session, "pin_hash")),
+        "auto_update_check": bool(get_setting(session, "auto_update_check")),
         "data_dir": str(get_config().data_dir),
         "version": __version__,
     }
@@ -109,6 +111,8 @@ def update_settings(data: SettingsUpdate, session: SessionDep) -> dict[str, Any]
         set_setting(session, "allowed_logins", logins)
     if data.projection_annual_return_pct is not None:
         set_setting(session, "projection_annual_return_pct", data.projection_annual_return_pct)
+    if data.auto_update_check is not None:
+        set_setting(session, "auto_update_check", data.auto_update_check)
     return read_settings(session)
 
 
@@ -164,7 +168,12 @@ def export_json(session: SessionDep) -> dict[str, Any]:
         },
         "settings": {
             key: get_setting(session, key)
-            for key in ("currencies", "allowed_logins", "projection_annual_return_pct")
+            for key in (
+                "currencies",
+                "allowed_logins",
+                "projection_annual_return_pct",
+                "auto_update_check",
+            )
         },
     }
 

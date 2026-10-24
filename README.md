@@ -27,6 +27,7 @@ App de escritorio para Windows con dashboard web privado, accesible desde tu tel
 - [Capturas](#capturas)
 - [Instalación](#instalación)
 - [Acceso remoto con Tailscale](#acceso-remoto-con-tailscale)
+- [Actualizaciones](#actualizaciones)
 - [Privacidad y seguridad](#privacidad-y-seguridad)
 - [Arquitectura](#arquitectura)
 - [Desarrollo](#desarrollo)
@@ -59,7 +60,8 @@ y se centran en gastos del día a día. Mamoney está pensado para otra pregunta
 | **Ajustes** | Tipos de cambio (automáticos y manuales), usuarios de Tailscale permitidos, PIN, respaldo `.db`, exportación e importación JSON. |
 
 Además: modo claro y oscuro, diseño responsive, vista de tabla accesible para cada gráfica,
-paleta validada para daltonismo y respaldo con un clic desde el icono de la bandeja.
+paleta validada para daltonismo, respaldo con un clic desde el icono de la bandeja y
+actualizaciones verificadas con un clic.
 
 ## Capturas
 
@@ -118,6 +120,25 @@ Para dejar de publicarlo: `.\scripts\tailscale-serve.ps1 -Off`.
 
 > **No uses `tailscale funnel`**: haría pública la URL. Mamoney rechaza a propósito las
 > peticiones sin identidad de Tailscale.
+
+## Actualizaciones
+
+Mamoney revisa GitHub Releases al arrancar y cada 6 horas. Cuando hay una versión nueva:
+
+- Aparece un aviso en el dashboard con las novedades y una notificación en el icono de la bandeja.
+- **Instalar y reiniciar** (desde el dashboard en el propio equipo o desde el menú de la bandeja):
+  1. descarga el `.zip` y **verifica su SHA-256** contra el `.sha256` publicado;
+  2. respalda tu base de datos en `%APPDATA%\Mamoney\backups`;
+  3. cierra Mamoney, reemplaza la carpeta del programa y lo vuelve a abrir.
+     Si algo falla, restaura la versión anterior automáticamente.
+- Tus datos no se tocan: viven en `%APPDATA%\Mamoney` y las migraciones se aplican solas al arrancar.
+
+Desde otros dispositivos vía Tailscale se ve el aviso, pero la instalación solo se permite en el
+equipo donde corre Mamoney. Puedes desactivar la revisión automática en **Ajustes → Actualizaciones**.
+El registro de la última instalación queda en `%APPDATA%\Mamoney\updates\update.log`.
+
+> Mamoney debe estar en una carpeta con permiso de escritura para tu usuario (por ejemplo
+> `%LOCALAPPDATA%\Programs\Mamoney`), no en `Program Files`.
 
 ## Privacidad y seguridad
 
@@ -199,7 +220,8 @@ uv run python scripts/seed.py         # datos de ejemplo
 | Ejecutable | `npm --prefix frontend run build && uv run --group build pyinstaller mamoney.spec --noconfirm` |
 
 Variables de entorno: `MAMONEY_DATA_DIR`, `MAMONEY_PORT` (8765), `MAMONEY_HOST` (127.0.0.1),
-`MAMONEY_FX_AUTO` (1/0) y `MAMONEY_STATIC_DIR`.
+`MAMONEY_FX_AUTO` (1/0), `MAMONEY_UPDATE_CHECK` (1/0), `MAMONEY_UPDATE_REPO` y `MAMONEY_STATIC_DIR`.
+`MAMONEY_VERSION_OVERRIDE` hace creer a la app que es otra versión, para probar el actualizador.
 
 La documentación interactiva de la API está en `http://127.0.0.1:8765/api/docs`.
 

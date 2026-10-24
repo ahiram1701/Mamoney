@@ -14,6 +14,7 @@ DEFAULTS: dict[str, Any] = {
     "pin_hash": None,
     "session_secret": None,
     "projection_annual_return_pct": 7.0,
+    "auto_update_check": True,
 }
 
 

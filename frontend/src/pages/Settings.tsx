@@ -3,7 +3,14 @@ import { Download, RefreshCw, Upload } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 
 import { api } from "../api/client";
-import { useApiMutation, useAuthStatus, useFxLatest, useSettings } from "../api/hooks";
+import {
+  useApiMutation,
+  useAuthStatus,
+  useFxLatest,
+  useSettings,
+  useUpdateStatus,
+} from "../api/hooks";
+import { InstallButton } from "../components/UpdateBanner";
 import { Card, ErrorText, Field, PageHeader } from "../components/ui";
 import { number, shortDate, todayIso } from "../lib/format";
 
@@ -16,6 +23,7 @@ export function SettingsPage() {
         <AccessCard />
         <PreferencesCard />
         <BackupCard />
+        <UpdatesCard />
       </div>
     </>
   );
@@ -313,6 +321,84 @@ function BackupCard() {
       </div>
       {status && <p className="mt-3 text-sm text-good">{status}</p>}
       <ErrorText error={error} />
+    </Card>
+  );
+}
+
+function UpdatesCard() {
+  const qc = useQueryClient();
+  const { data: status } = useUpdateStatus();
+  const { data: settings } = useSettings();
+  const { data: auth } = useAuthStatus();
+  const [checking, setChecking] = useState(false);
+  const save = useApiMutation("PATCH", "/api/settings");
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      qc.setQueryData(["updates"], await api("/api/updates?refresh=true"));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const checked = status?.checked_at
+    ? new Date(status.checked_at).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "nunca";
+
+  return (
+    <Card title="Actualizaciones" subtitle="Nuevas versiones publicadas en GitHub Releases">
+      <dl className="mb-4 grid grid-cols-2 gap-y-1 text-sm">
+        <dt className="text-ink-3">Versión instalada</dt>
+        <dd className="tabular">v{status?.current ?? settings?.version}</dd>
+        <dt className="text-ink-3">Última publicada</dt>
+        <dd className="tabular">{status?.latest ? `v${status.latest.version}` : "—"}</dd>
+        <dt className="text-ink-3">Última revisión</dt>
+        <dd>{checked}</dd>
+      </dl>
+
+      {status?.error && <p className="mb-3 text-sm text-critical">{status.error}</p>}
+      {status && !status.available && !status.error && status.latest && (
+        <p className="mb-3 text-sm text-good">Tienes la versión más reciente.</p>
+      )}
+      {status?.available && (
+        <div className="mb-3 space-y-2">
+          {status.can_install && auth?.is_local ? (
+            <InstallButton />
+          ) : (
+            <a
+              className="btn btn-sm"
+              href={status.latest?.html_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Descargar v{status.latest?.version}
+            </a>
+          )}
+          <p className="text-xs text-ink-3">
+            Antes de instalar se verifica el checksum SHA-256 del paquete y se respalda tu base de
+            datos. Si algo falla, se restaura la versión anterior.
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="btn btn-sm" onClick={checkNow} disabled={checking}>
+          <RefreshCw size={14} className={checking ? "animate-spin" : ""} /> Buscar ahora
+        </button>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={settings?.auto_update_check ?? true}
+            onChange={(e) => save.mutate({ auto_update_check: e.target.checked })}
+          />
+          Buscar automáticamente cada 6 h
+        </label>
+      </div>
+      <ErrorText error={save.error} />
     </Card>
   );
 }

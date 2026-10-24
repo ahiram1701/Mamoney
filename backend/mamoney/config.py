@@ -30,6 +30,9 @@ class Config:
     base_currency: str
     fx_auto_update: bool
     static_dir: Path
+    update_check: bool
+    update_repo: str
+    version_override: str | None
 
     @property
     def db_path(self) -> Path:
@@ -38,6 +41,10 @@ class Config:
     @property
     def backup_dir(self) -> Path:
         return self.data_dir / "backups"
+
+    @property
+    def updates_dir(self) -> Path:
+        return self.data_dir / "updates"
 
 
 @lru_cache
@@ -52,4 +59,8 @@ def get_config() -> Config:
         base_currency="MXN",
         fx_auto_update=os.environ.get("MAMONEY_FX_AUTO", "1") == "1",
         static_dir=Path(os.environ.get("MAMONEY_STATIC_DIR", static_default)),
+        update_check=os.environ.get("MAMONEY_UPDATE_CHECK", "1") == "1",
+        update_repo=os.environ.get("MAMONEY_UPDATE_REPO", "ahiram1701/Mamoney"),
+        # Solo para probar el actualizador: hace creer a la app que es otra versión.
+        version_override=os.environ.get("MAMONEY_VERSION_OVERRIDE") or None,
     )

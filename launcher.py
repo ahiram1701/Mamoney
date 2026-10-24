@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw
 from mamoney.config import get_config
 from mamoney.main import app
 from mamoney.routers.system import backup_database
+from mamoney.services import updater
 
 log = logging.getLogger("mamoney.launcher")
 APP_NAME = "Mamoney"
@@ -113,11 +114,35 @@ def main() -> None:
         backup_database(target)
         _icon.notify(f"Respaldo guardado en {target}", APP_NAME)
 
-    def quit_app(icon: pystray.Icon, _item: object) -> None:
+    def shutdown() -> None:
         icon.stop()
         server.should_exit = True
         window.events.closing -= on_closing
         window.destroy()
+
+    def quit_app(_icon: pystray.Icon, _item: object) -> None:
+        shutdown()
+
+    updater.set_shutdown_handler(shutdown)
+
+    def update_label(_item: object) -> str:
+        status = updater.last_status()
+        version = status.latest.version if status and status.latest else ""
+        return f"Instalar actualización v{version}"
+
+    def update_visible(_item: object) -> bool:
+        status = updater.last_status()
+        return bool(status and status.can_install and not status.installing)
+
+    def install_update(_icon: pystray.Icon, _item: object) -> None:
+        def run() -> None:
+            try:
+                icon.notify("Descargando y verificando la actualización…", APP_NAME)
+                updater.install_update()
+            except updater.UpdateError as exc:
+                icon.notify(str(exc), APP_NAME)
+
+        threading.Thread(target=run, daemon=True, name="update").start()
 
     icon = pystray.Icon(
         APP_NAME,
@@ -130,11 +155,30 @@ def main() -> None:
             pystray.MenuItem(
                 "Iniciar con Windows", lambda: toggle_autostart(), checked=autostart_enabled
             ),
+            pystray.MenuItem(update_label, install_update, visible=update_visible),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Salir", quit_app),
         ),
     )
     icon.run_detached()
+
+    def watch_updates() -> None:
+        """Avisa una sola vez por versión nueva y muestra la opción en el menú."""
+        notified: str | None = None
+        while True:
+            status = updater.last_status()
+            if status and status.available and status.latest:
+                if status.latest.version != notified:
+                    notified = status.latest.version
+                    icon.notify(
+                        f"Mamoney v{notified} está disponible. Instálala desde este menú "
+                        "o desde el dashboard.",
+                        APP_NAME,
+                    )
+                icon.update_menu()
+            time.sleep(60)
+
+    threading.Thread(target=watch_updates, daemon=True, name="update-watch").start()
     webview.start(private_mode=False)
     server.should_exit = True
 
