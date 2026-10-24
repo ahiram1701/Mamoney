@@ -1,0 +1,103 @@
+Mamoney — Licencia de software propietario
+Copyright (c) 2026 A. Hiram. Todos los derechos reservados.
+
+ESPAÑOL
+
+1. Titularidad. Mamoney, incluido su código fuente, código objeto, ejecutables,
+   diseño, documentación, nombre y logotipo (el "Software"), es propiedad exclusiva
+   del titular de los derechos indicado arriba (el "Titular") y está protegido por
+   las leyes de derechos de autor y los tratados internacionales aplicables.
+
+2. Código visible, no abierto. El código fuente se publica únicamente para que
+   pueda consultarse y revisarse. Su publicación no concede ninguna licencia de uso
+   distinta de las que se indican expresamente en la cláusula 3.
+
+3. Permisos. Se le permite, sin costo:
+   a) ver y leer el código fuente en el repositorio oficial; y
+   b) descargar e instalar los binarios oficiales publicados por el Titular en la
+      sección de versiones ("Releases") del repositorio oficial y usarlos para la
+      gestión de sus finanzas personales, sin fines comerciales.
+
+4. Restricciones. Salvo autorización previa y por escrito del Titular, queda
+   prohibido:
+   a) copiar, reproducir o descargar el código fuente para cualquier fin distinto de
+      su consulta, salvo las copias temporales que haga la propia plataforma de
+      alojamiento;
+   b) modificar, adaptar, traducir o crear obras derivadas del Software;
+   c) distribuir, sublicenciar, vender, alquilar, publicar o poner a disposición de
+      terceros el Software o cualquier obra derivada, incluso como servicio en red;
+   d) usar el Software, total o parcialmente, con fines comerciales; y
+   e) eliminar o alterar los avisos de derechos de autor o de esta licencia.
+
+5. Componentes de terceros. El Software incluye componentes de terceros que se
+   rigen por sus propias licencias, enumeradas en THIRD_PARTY_NOTICES.md. Nada en
+   esta licencia limita los derechos que dichas licencias le otorgan respecto de
+   esos componentes.
+
+6. Contribuciones. Cualquier contribución enviada al repositorio (código,
+   documentación o sugerencias) solo se aceptará bajo un acuerdo previo por escrito
+   que ceda o licencie al Titular los derechos necesarios.
+
+7. Sin garantía. EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO,
+   EXPRESA O IMPLÍCITA, INCLUIDAS LAS DE COMERCIABILIDAD, IDONEIDAD PARA UN FIN
+   PARTICULAR Y NO INFRACCIÓN. El Software no constituye asesoría financiera,
+   fiscal ni de inversión.
+
+8. Limitación de responsabilidad. EN NINGÚN CASO EL TITULAR SERÁ RESPONSABLE DE
+   RECLAMACIONES, DAÑOS, PÉRDIDAS DE DATOS U OTRAS RESPONSABILIDADES DERIVADAS DEL
+   USO O DE LA IMPOSIBILIDAD DE USO DEL SOFTWARE.
+
+9. Terminación. Esta licencia termina automáticamente si usted incumple cualquiera
+   de sus términos. Al terminar, deberá dejar de usar el Software y eliminar todas
+   las copias en su poder.
+
+Para solicitar permisos adicionales, abra un issue en el repositorio oficial.
+
+-------------------------------------------------------------------------------
+
+ENGLISH (informative translation; the Spanish text prevails)
+
+1. Ownership. Mamoney, including its source code, object code, executables, design,
+   documentation, name and logo (the "Software"), is the exclusive property of the
+   copyright holder named above (the "Owner") and is protected by copyright laws
+   and applicable international treaties.
+
+2. Source-available, not open source. The source code is published solely so that
+   it can be viewed and reviewed. Publication grants no license other than those
+   expressly stated in section 3.
+
+3. Permissions. You may, free of charge:
+   a) view and read the source code in the official repository; and
+   b) download and install the official binaries published by the Owner in the
+      repository's Releases section and use them to manage your personal finances
+      for non-commercial purposes.
+
+4. Restrictions. Without the Owner's prior written permission, you may not:
+   a) copy, reproduce or download the source code for any purpose other than
+      viewing it, except for temporary copies made by the hosting platform itself;
+   b) modify, adapt, translate or create derivative works of the Software;
+   c) distribute, sublicense, sell, rent, publish or make the Software or any
+      derivative work available to third parties, including as a network service;
+   d) use the Software, in whole or in part, for commercial purposes; or
+   e) remove or alter copyright or license notices.
+
+5. Third-party components. The Software includes third-party components governed
+   by their own licenses, listed in THIRD_PARTY_NOTICES.md. Nothing in this license
+   limits the rights those licenses grant you for those components.
+
+6. Contributions. Any contribution submitted to the repository will only be
+   accepted under a prior written agreement assigning or licensing the necessary
+   rights to the Owner.
+
+7. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+   AND NON-INFRINGEMENT. The Software is not financial, tax or investment advice.
+
+8. Limitation of liability. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM,
+   DAMAGES, DATA LOSS OR OTHER LIABILITY ARISING FROM THE USE OF, OR INABILITY TO
+   USE, THE SOFTWARE.
+
+9. Termination. This license terminates automatically if you breach any of its
+   terms. Upon termination you must stop using the Software and delete all copies.
+
+To request additional permissions, open an issue in the official repository.

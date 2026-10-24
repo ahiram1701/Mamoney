@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Instalar dependencias
+        run: uv sync --locked --group dev
+      - name: Ruff (lint)
+        run: uv run ruff check .
+      - name: Ruff (formato)
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy
+      - name: Pytest
+        run: uv run pytest --cov --cov-report=xml --cov-report=term
+      - name: Migraciones al día con los modelos
+        shell: bash
+        env:
+          MAMONEY_DATA_DIR: ${{ runner.temp }}/alembic-check
+        run: |
+          uv run alembic -c backend/alembic.ini upgrade head
+          uv run alembic -c backend/alembic.ini check
+      - name: Subir cobertura
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier
+        run: npm run format:check
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Vitest
+        run: npm test
+      - name: Build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+  smoke:
+    name: Prueba de humo
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - run: uv sync --locked
+      - name: Arrancar servidor y comprobar endpoints
+        env:
+          MAMONEY_DATA_DIR: ${{ runner.temp }}/mamoney
+          MAMONEY_FX_AUTO: "0"
+        run: |
+          uv run mamoney-server &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/api/health && break; sleep 1; done
+          curl -fs http://127.0.0.1:8765/api/health | grep '"ok"'
+          curl -fs http://127.0.0.1:8765/ | grep -q '<div id="root">'
+          curl -fs http://127.0.0.1:8765/api/analytics/summary | grep -q '"base_currency":"MXN"'
+          # Sin identidad de Tailscale y con Host externo debe rechazarse.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: pc.tailnet.ts.net' http://127.0.0.1:8765/api/assets)" = "403"
+
+  package:
+    name: Empaquetar Windows
+    if: github.event_name == 'push'
+    needs: [smoke]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - run: uv sync --locked --all-extras --group build
+      - run: uv run pyinstaller mamoney.spec --noconfirm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mamoney-windows-${{ github.sha }}
+          path: dist/Mamoney
+          retention-days: 14

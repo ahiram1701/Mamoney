@@ -1,0 +1,26 @@
+# Changelog
+
+Todos los cambios relevantes de Mamoney se documentan aquí.
+El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
+[versionado semántico](https://semver.org/lang/es/).
+
+## [Unreleased]
+
+## [0.1.0] - 2026-10-24
+
+### Añadido
+
+- Patrimonio: activos y deudas con historial de valuaciones, liquidez y distribución por tipo, moneda y liquidez.
+- Ingresos: fuentes activas y pasivas de cualquier tipo, cobros con impuestos retenidos y gráfica mensual por fuente.
+- Gastos fijos con frecuencias semanal, quincenal, mensual, bimestral, trimestral, semestral y anual;
+  calendario de vencimientos y control de pagos.
+- Análisis: cobertura con ingreso pasivo, colchón de liquidez, deuda/activos, concentración de ingresos,
+  rendimiento por activo y proyección de patrimonio.
+- Multimoneda con base en MXN y actualización automática de tipos de cambio (Frankfurter/BCE).
+- App de escritorio para Windows con ventana nativa, icono en la bandeja e inicio con Windows.
+- Acceso remoto vía `tailscale serve` con verificación de identidad, lista de usuarios permitidos y PIN.
+- Respaldo de la base de datos y exportación/importación JSON.
+- CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
+
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ahiram1701/Mamoney/releases/tag/v0.1.0

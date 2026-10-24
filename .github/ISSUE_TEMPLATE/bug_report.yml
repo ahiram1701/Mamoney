@@ -1,0 +1,43 @@
+name: Reporte de error
+description: Algo no funciona como debería
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Gracias por reportarlo. **No incluyas datos financieros reales** en el reporte ni en las capturas."
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: Ajustes → Preferencias muestra la versión.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: ¿Dónde ocurre?
+      options:
+        - App de escritorio (Windows)
+        - Navegador en el mismo equipo
+        - Otro dispositivo vía Tailscale
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      placeholder: "1. Ve a…\n2. Haz clic en…\n3. Aparece…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Capturas o registros
+      render: text

@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publicar versión
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar que el tag coincide con la versión
+        shell: bash
+        run: |
+          version=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          test "v$version" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != v$version en pyproject.toml"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Compilar frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pruebas
+        run: |
+          uv sync --locked --all-extras --group dev --group build
+          uv run pytest
+
+      - name: Empaquetar con PyInstaller
+        run: uv run pyinstaller mamoney.spec --noconfirm
+
+      - name: Comprimir y firmar con checksum
+        shell: pwsh
+        run: |
+          $zip = "Mamoney-v$env:VERSION-windows-x64.zip"
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md dist/Mamoney/
+          Compress-Archive -Path dist/Mamoney -DestinationPath $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Out-File -Encoding ascii "$zip.sha256"
+          echo "ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Extraer notas del CHANGELOG
+        shell: bash
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \[" v "\]" {found=1; next}
+            found && /^## \[/ {exit}
+            found {print}
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || echo "Versión $VERSION" > release-notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Mamoney v${{ env.VERSION }}
+          body_path: release-notes.md
+          generate_release_notes: true
+          files: |
+            ${{ env.ZIP }}
+            ${{ env.ZIP }}.sha256
