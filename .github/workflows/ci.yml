@@ -45,7 +45,7 @@ jobs:
           uv run alembic -c backend/alembic.ini check
       - name: Subir cobertura
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.xml
@@ -74,7 +74,7 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist
@@ -120,7 +120,7 @@ jobs:
           path: frontend/dist
       - run: uv sync --locked --all-extras --group build
       - run: uv run pyinstaller mamoney.spec --noconfirm
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Mamoney-windows-${{ github.sha }}
           path: dist/Mamoney
