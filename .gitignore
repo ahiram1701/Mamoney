@@ -1,0 +1,39 @@
+# Datos financieros: nunca al repositorio
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+.demo-data/
+backups/
+mamoney-*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Empaquetado
+build/
+dist/
+*.zip
+*.sha256
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.claude/
+
+# TypeScript
+*.tsbuildinfo
