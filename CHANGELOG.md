@@ -6,12 +6,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-24
+
+> Esta es la primera versión con actualizador: instálala a mano una vez; las siguientes se
+> instalan solas desde Mamoney.
+
 ### Añadido
 
 - Actualizaciones desde GitHub Releases: revisión al arrancar y cada 6 h, aviso en el dashboard y en
   la bandeja, e instalación con un clic que verifica el SHA-256, respalda la base de datos y restaura
   la versión anterior si algo falla.
 - Ajustes → Actualizaciones: versión instalada, búsqueda manual y opción para desactivar la revisión.
+
+### Corregido
+
+- Las notas de cada release ahora incluyen la sección correspondiente del CHANGELOG.
+- El ejecutable incluye los metadatos del paquete para reportar su versión correctamente.
 
 ## [0.1.0] - 2026-10-24
 
@@ -29,5 +39,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ahiram1701/Mamoney/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ahiram1701/Mamoney/releases/tag/v0.1.0

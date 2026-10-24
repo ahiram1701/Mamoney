@@ -42,6 +42,26 @@ jobs:
       - name: Empaquetar con PyInstaller
         run: uv run pyinstaller mamoney.spec --noconfirm
 
+      - name: Verificar que el ejecutable reporta la versión del tag
+        shell: pwsh
+        env:
+          MAMONEY_PORT: "8799"
+          MAMONEY_DATA_DIR: ${{ runner.temp }}/mamoney-exe
+          MAMONEY_FX_AUTO: "0"
+          MAMONEY_UPDATE_CHECK: "0"
+        run: |
+          $p = Start-Process dist/Mamoney/Mamoney.exe -ArgumentList "--hidden" -PassThru
+          $reported = $null
+          for ($i = 0; $i -lt 60 -and -not $reported; $i++) {
+            Start-Sleep -Seconds 1
+            try { $reported = (Invoke-RestMethod http://127.0.0.1:8799/api/health).version } catch {}
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if ($reported -ne $env:VERSION) {
+            throw "El .exe reporta '$reported' pero el tag es $env:VERSION"
+          }
+          "Mamoney.exe reporta v$reported"
+
       - name: Comprimir y firmar con checksum
         shell: pwsh
         run: |

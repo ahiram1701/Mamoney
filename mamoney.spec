@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 ROOT = Path(SPECPATH)
 
@@ -15,6 +15,8 @@ datas = [
     (str(ROOT / "frontend" / "dist"), "frontend/dist"),
     (str(ROOT / "backend" / "mamoney" / "migrations"), "mamoney/migrations"),
     (str(ROOT / "assets" / "mamoney.png"), "assets"),
+    # Metadatos del paquete: así el .exe conoce su versión y el actualizador no se confunde.
+    *copy_metadata("mamoney"),
 ]
 
 hiddenimports = (
