@@ -12,7 +12,7 @@ jobs:
     name: Publicar versión
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verificar que el tag coincide con la versión
         shell: bash
