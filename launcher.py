@@ -5,22 +5,55 @@ Tailscale. Para terminar por completo se usa "Salir" en el icono de la bandeja.
 """
 
 import logging
+import logging.handlers
 import os
 import sys
 import threading
 import time
+import traceback
 import webbrowser
 from pathlib import Path
 
+APP_NAME = "Mamoney"
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def unblock_bundle() -> int:
+    """Quita la marca "descargado de internet" (Mark of the Web) de los archivos de la app.
+
+    Al descomprimir el .zip descargado con el navegador, Windows marca cada archivo con un
+    flujo `Zone.Identifier`. .NET Framework se niega a cargar ensamblados marcados, así que
+    pywebview no puede abrir la ventana. Equivale a "Desbloquear" en las propiedades del
+    archivo y solo toca la carpeta de la propia app.
+    """
+    if not FROZEN or sys.platform != "win32":
+        return 0
+    root = Path(sys.executable).resolve().parent
+    probe = root / "_internal" / "pythonnet" / "runtime" / "Python.Runtime.dll"
+    if not os.path.exists(f"{probe}:Zone.Identifier"):
+        return 0  # sin marca (instalada por el actualizador o ya desbloqueada)
+    removed = 0
+    for folder, _dirs, files in os.walk(root):
+        for name in files:
+            try:
+                os.remove(os.path.join(folder, f"{name}:Zone.Identifier"))
+                removed += 1
+            except OSError:
+                pass
+    return removed
+
+
+# Debe ocurrir antes de importar pywebview/pythonnet.
+UNBLOCKED = unblock_bundle()
+
 # En el ejecutable de PyInstaller el paquete ya está incluido; desde el código, se
 # añade backend/ al path.
-if not getattr(sys, "frozen", False):
+if not FROZEN:
     sys.path.insert(0, str(Path(__file__).resolve().parent / "backend"))
 
 import httpx
 import pystray
 import uvicorn
-import webview
 from PIL import Image, ImageDraw
 
 from mamoney.config import get_config
@@ -29,7 +62,34 @@ from mamoney.routers.system import backup_database
 from mamoney.services import updater
 
 log = logging.getLogger("mamoney.launcher")
-APP_NAME = "Mamoney"
+
+
+def setup_logging() -> Path:
+    log_file = get_config().data_dir / "mamoney.log"
+    handlers: list[logging.Handler] = [
+        logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
+        )
+    ]
+    if sys.stderr is not None:  # el .exe sin consola no tiene stderr
+        handlers.append(logging.StreamHandler())
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        handlers=handlers,
+        force=True,
+    )
+    return log_file
+
+
+def show_error(message: str) -> None:
+    """Muestra un aviso nativo (no depende de pywebview ni de la bandeja)."""
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, message, APP_NAME, 0x10)
+    else:
+        print(message, file=sys.stderr)
 
 
 class Server(uvicorn.Server):
@@ -37,17 +97,24 @@ class Server(uvicorn.Server):
         pass
 
 
+def health_url() -> str:
+    return f"http://127.0.0.1:{get_config().port}/api/health"
+
+
+def already_running() -> bool:
+    try:
+        return httpx.get(health_url(), timeout=0.5).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
 def start_server() -> Server:
     cfg = get_config()
-    server = Server(uvicorn.Config(app, host=cfg.host, port=cfg.port, log_level="info"))
+    server = Server(uvicorn.Config(app, host=cfg.host, port=cfg.port, log_config=None))
     threading.Thread(target=server.run, daemon=True, name="uvicorn").start()
-    url = f"http://127.0.0.1:{cfg.port}/api/health"
-    for _ in range(100):
-        try:
-            if httpx.get(url, timeout=0.5).status_code == 200:
-                return server
-        except httpx.HTTPError:
-            pass
+    for _ in range(150):
+        if already_running():
+            return server
         time.sleep(0.1)
     raise RuntimeError(f"El servidor no arrancó en el puerto {cfg.port}")
 
@@ -78,35 +145,37 @@ def toggle_autostart() -> None:
     if path.exists():
         path.unlink()
         return
-    if getattr(sys, "frozen", False):
+    if FROZEN:
         command = f'start "" "{sys.executable}" --hidden'
     else:
         command = f'start "" "{sys.executable}" "{Path(__file__).resolve()}" --hidden'
     path.write_text(f"@echo off\r\n{command}\r\n", encoding="utf-8")
 
 
-def main() -> None:
-    logging.basicConfig(level=logging.INFO)
+def run() -> None:
     cfg = get_config()
-    server = start_server()
     url = f"http://127.0.0.1:{cfg.port}/"
+    hidden = "--hidden" in sys.argv
 
-    created = webview.create_window(
-        APP_NAME, url, width=1360, height=880, min_size=(420, 600), hidden="--hidden" in sys.argv
-    )
-    if created is None:
-        raise RuntimeError("No se pudo crear la ventana de Mamoney")
-    window = created
+    if already_running():
+        # Ya hay un Mamoney abierto: se muestra su dashboard en lugar de pelear por el puerto.
+        log.info("Mamoney ya está en ejecución; se abre el dashboard existente")
+        if not hidden:
+            webbrowser.open(url)
+        return
 
-    def on_closing() -> bool:
-        window.hide()
-        return False  # cancela el cierre: la app sigue en la bandeja
-
-    window.events.closing += on_closing
+    if UNBLOCKED:
+        log.info("Se quitó la marca de descarga de %s archivos", UNBLOCKED)
+    server = start_server()
+    stop = threading.Event()
+    window = None  # se asigna si pywebview logra crear la ventana
 
     def show(_icon: object = None, _item: object = None) -> None:
-        window.show()
-        window.restore()
+        if window is not None:
+            window.show()
+            window.restore()
+        else:
+            webbrowser.open(url)
 
     def backup(_icon: pystray.Icon, _item: object) -> None:
         cfg.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -117,8 +186,10 @@ def main() -> None:
     def shutdown() -> None:
         icon.stop()
         server.should_exit = True
-        window.events.closing -= on_closing
-        window.destroy()
+        stop.set()
+        if window is not None:
+            window.events.closing -= on_closing
+            window.destroy()
 
     def quit_app(_icon: pystray.Icon, _item: object) -> None:
         shutdown()
@@ -135,14 +206,14 @@ def main() -> None:
         return bool(status and status.can_install and not status.installing)
 
     def install_update(_icon: pystray.Icon, _item: object) -> None:
-        def run() -> None:
+        def task() -> None:
             try:
                 icon.notify("Descargando y verificando la actualización…", APP_NAME)
                 updater.install_update()
             except updater.UpdateError as exc:
                 icon.notify(str(exc), APP_NAME)
 
-        threading.Thread(target=run, daemon=True, name="update").start()
+        threading.Thread(target=task, daemon=True, name="update").start()
 
     icon = pystray.Icon(
         APP_NAME,
@@ -165,7 +236,7 @@ def main() -> None:
     def watch_updates() -> None:
         """Avisa una sola vez por versión nueva y muestra la opción en el menú."""
         notified: str | None = None
-        while True:
+        while not stop.is_set():
             status = updater.last_status()
             if status and status.available and status.latest:
                 if status.latest.version != notified:
@@ -176,11 +247,53 @@ def main() -> None:
                         APP_NAME,
                     )
                 icon.update_menu()
-            time.sleep(60)
+            stop.wait(60)
 
     threading.Thread(target=watch_updates, daemon=True, name="update-watch").start()
-    webview.start(private_mode=False)
+
+    def on_closing() -> bool:
+        if window is not None:
+            window.hide()
+        return False  # cancela el cierre: la app sigue en la bandeja
+
+    try:
+        import webview
+
+        window = webview.create_window(
+            APP_NAME, url, width=1360, height=880, min_size=(420, 600), hidden=hidden
+        )
+        if window is None:
+            raise RuntimeError("pywebview no devolvió una ventana")
+        window.events.closing += on_closing
+        webview.start(private_mode=False)
+    except Exception:
+        # Sin ventana nativa (p. ej. falta WebView2): Mamoney sigue en la bandeja y se usa
+        # el navegador predeterminado.
+        log.exception("No se pudo abrir la ventana nativa; se usará el navegador")
+        window = None
+        if not stop.is_set():
+            icon.notify(
+                "No se pudo abrir la ventana; Mamoney sigue disponible en tu navegador y en "
+                "este icono.",
+                APP_NAME,
+            )
+            if not hidden:
+                webbrowser.open(url)
+            stop.wait()
     server.should_exit = True
+    icon.stop()
+
+
+def main() -> None:
+    log_file = setup_logging()
+    try:
+        run()
+    except Exception:
+        log.exception("Error fatal")
+        show_error(
+            f"Mamoney no pudo iniciar.\n\n{traceback.format_exc(limit=3)}\nDetalles en: {log_file}"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

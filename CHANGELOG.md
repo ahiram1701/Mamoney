@@ -6,6 +6,22 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-25
+
+### Corregido
+
+- Mamoney.exe no abría al descargarlo con el navegador: Windows marca los archivos del `.zip`
+  como "descargados de internet" y .NET se negaba a cargar los componentes de la ventana. Ahora la
+  app quita esa marca de sus propios archivos al arrancar.
+
+### Añadido
+
+- Si la ventana nativa no puede abrirse (por ejemplo, sin WebView2), Mamoney sigue en la bandeja y
+  abre el dashboard en el navegador en lugar de cerrarse.
+- Registro en `%APPDATA%\Mamoney\mamoney.log` y aviso claro si la app no puede iniciar.
+- Abrir Mamoney cuando ya está en ejecución muestra el dashboard existente en lugar de duplicarlo.
+- El flujo de Release prueba el ejecutable con sus archivos marcados como descargados.
+
 ## [0.2.0] - 2026-10-24
 
 > Esta es la primera versión con actualizador: instálala a mano una vez; las siguientes se
@@ -39,6 +55,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/ahiram1701/Mamoney/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ahiram1701/Mamoney/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ahiram1701/Mamoney/releases/tag/v0.1.0

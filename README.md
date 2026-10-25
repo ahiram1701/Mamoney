@@ -87,6 +87,10 @@ actualizaciones verificadas con un clic.
 
 > Requiere Windows 10/11 con Microsoft Edge WebView2 (incluido en Windows 11).
 > Tus datos se guardan en `%APPDATA%\Mamoney`.
+>
+> La primera vez, Windows SmartScreen puede advertir que la app no está firmada:
+> elige **Más información → Ejecutar de todas formas**. Si algo falla al iniciar, el detalle
+> queda en `%APPDATA%\Mamoney\mamoney.log`.
 
 ### Opción 2: desde el código
 

@@ -50,17 +50,34 @@ jobs:
           MAMONEY_FX_AUTO: "0"
           MAMONEY_UPDATE_CHECK: "0"
         run: |
-          $p = Start-Process dist/Mamoney/Mamoney.exe -ArgumentList "--hidden" -PassThru
+          # Simula una descarga con el navegador: Windows marca cada archivo extraído del .zip
+          # (Mark of the Web) y .NET se niega a cargar los ensamblados marcados.
+          $test = Join-Path $env:RUNNER_TEMP "Mamoney-descargado"
+          Copy-Item dist/Mamoney $test -Recurse
+          $mark = "[ZoneTransfer]`r`nZoneId=3`r`nHostUrl=https://github.com/`r`n"
+          Get-ChildItem $test -Recurse -File | ForEach-Object {
+            Set-Content -LiteralPath $_.FullName -Stream Zone.Identifier -Value $mark
+          }
+          $p = Start-Process (Join-Path $test "Mamoney.exe") -ArgumentList "--hidden" -PassThru
           $reported = $null
           for ($i = 0; $i -lt 60 -and -not $reported; $i++) {
             Start-Sleep -Seconds 1
             try { $reported = (Invoke-RestMethod http://127.0.0.1:8799/api/health).version } catch {}
           }
+          # La ventana (pywebview/.NET) se inicializa después del servidor: se da tiempo y se
+          # revisa que el proceso siga vivo y que el registro no tenga errores.
+          Start-Sleep -Seconds 10
+          $alive = -not $p.HasExited
+          $log = Join-Path $env:MAMONEY_DATA_DIR "mamoney.log"
+          # Distingue mayúsculas: el logger "uvicorn.error" registra mensajes normales.
+          $errors = Select-String -Path $log -Pattern " ERROR \[|Traceback" -CaseSensitive -ErrorAction SilentlyContinue
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           if ($reported -ne $env:VERSION) {
             throw "El .exe reporta '$reported' pero el tag es $env:VERSION"
           }
-          "Mamoney.exe reporta v$reported"
+          if (-not $alive) { throw "Mamoney.exe se cerró solo después de arrancar" }
+          if ($errors) { Get-Content $log; throw "El registro de Mamoney contiene errores" }
+          "Mamoney.exe reporta v$reported, sigue vivo y sin errores con archivos marcados"
 
       - name: Comprimir y firmar con checksum
         shell: pwsh
