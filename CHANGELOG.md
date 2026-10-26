@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-26
+
 ### Añadido
 
 - Inversiones → **Agregar saldo**: registra cuántos títulos tienes (p. ej. 0.05 BTC) sin capturar
@@ -104,7 +106,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/ahiram1701/Mamoney/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/ahiram1701/Mamoney/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/ahiram1701/Mamoney/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/ahiram1701/Mamoney/compare/v0.2.2...v0.2.3
