@@ -21,6 +21,7 @@ from mamoney.routers import (
     expenses,
     fx,
     income,
+    portfolio,
     system,
     tailscale,
     updates,
@@ -37,6 +38,7 @@ log = logging.getLogger("mamoney")
 
 FX_REFRESH_SECONDS = 6 * 60 * 60
 UPDATE_CHECK_SECONDS = 6 * 60 * 60
+QUOTES_REFRESH_SECONDS = 30 * 60
 
 
 async def _fx_loop() -> None:
@@ -50,6 +52,21 @@ async def _fx_loop() -> None:
         except Exception:
             log.exception("Fallo al actualizar tipos de cambio")
         await asyncio.sleep(FX_REFRESH_SECONDS)
+
+
+async def _quotes_loop() -> None:
+    from mamoney.services.portfolio import refresh_prices
+
+    await asyncio.sleep(5)
+    while True:
+        try:
+            with Session(get_engine()) as session:
+                result = await asyncio.to_thread(refresh_prices, session)
+                if result["updated"] or result["failed"]:
+                    log.info("Cotizaciones actualizadas: %s", result)
+        except Exception:
+            log.exception("Fallo al actualizar cotizaciones")
+        await asyncio.sleep(QUOTES_REFRESH_SECONDS)
 
 
 async def _update_loop() -> None:
@@ -76,6 +93,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(_fx_loop()))
     if cfg.update_check:
         tasks.append(asyncio.create_task(_update_loop()))
+    if cfg.quotes_auto_update:
+        tasks.append(asyncio.create_task(_quotes_loop()))
     yield
     for task in tasks:
         task.cancel()
@@ -114,7 +133,17 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Frame-Options", "DENY")
         return response
 
-    for module in (assets, income, expenses, fx, analytics, system, updates, tailscale):
+    for module in (
+        assets,
+        income,
+        expenses,
+        fx,
+        analytics,
+        portfolio,
+        system,
+        updates,
+        tailscale,
+    ):
         app.include_router(module.router)
 
     static_dir = get_config().static_dir

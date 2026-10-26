@@ -79,6 +79,8 @@ class AssetBase(SQLModel):
     institution: str | None = Field(default=None, max_length=120)
     notes: str | None = None
     archived: bool = False
+    # Cuenta de inversión con posiciones: su valor se calcula con operaciones y precios.
+    tracks_positions: bool = False
 
 
 class Asset(AssetBase, table=True):
@@ -174,3 +176,53 @@ class FxRate(SQLModel, table=True):
 class Setting(SQLModel, table=True):
     key: str = Field(primary_key=True, max_length=64)
     value: str
+
+
+class SecurityKind(StrEnum):
+    stock = "stock"
+    etf = "etf"
+    crypto = "crypto"
+    fund = "fund"
+    other = "other"
+
+
+class TradeSide(StrEnum):
+    buy = "buy"
+    sell = "sell"
+
+
+class Security(SQLModel, table=True):
+    """Instrumento cotizado. `symbol` usa la notación de Yahoo Finance (AAPL, VOO, BTC-USD)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    symbol: str = Field(index=True, unique=True, max_length=24)
+    name: str | None = Field(default=None, max_length=160)
+    kind: SecurityKind = SecurityKind.stock
+    currency: str = Field(default="USD", max_length=8)
+    last_price: float | None = None
+    price_at: dt.datetime | None = None
+    price_source: str | None = Field(default=None, max_length=32)
+
+
+class SecurityPrice(SQLModel, table=True):
+    """Precio de cierre diario, para reconstruir el valor histórico de las posiciones."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    security_id: int = Field(foreign_key="security.id", index=True, ondelete="CASCADE")
+    date: dt.date = Field(index=True)
+    close: float = Field(gt=0)
+
+
+class TradeBase(SQLModel):
+    date: dt.date
+    side: TradeSide = TradeSide.buy
+    quantity: float = Field(gt=0)
+    price: float = Field(ge=0)
+    fee: float = Field(default=0, ge=0)
+    notes: str | None = None
+
+
+class Trade(TradeBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    asset_id: int = Field(foreign_key="asset.id", index=True, ondelete="CASCADE")
+    security_id: int = Field(foreign_key="security.id", index=True, ondelete="RESTRICT")

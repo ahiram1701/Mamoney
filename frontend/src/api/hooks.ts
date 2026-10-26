@@ -14,10 +14,12 @@ import type {
   IncomeSourceRow,
   NetWorthPoint,
   Performance,
+  PositionsReport,
   Projection,
   Settings,
   Summary,
   TailscaleStatus,
+  TradeRow,
   UpcomingPayment,
   UpdateStatus,
   Valuation,
@@ -125,6 +127,16 @@ export const useUpdateStatus = () =>
 
 export const useTailscale = () =>
   useQuery({ queryKey: ["tailscale"], queryFn: get<TailscaleStatus>("/api/tailscale") });
+
+export const usePositions = () =>
+  useQuery({
+    queryKey: ["positions"],
+    queryFn: get<PositionsReport>("/api/portfolio/positions"),
+    refetchInterval: 5 * 60_000,
+  });
+
+export const useTrades = () =>
+  useQuery({ queryKey: ["trades"], queryFn: get<TradeRow[]>("/api/portfolio/trades") });
 
 export const useSettings = () =>
   useQuery({ queryKey: ["settings"], queryFn: get<Settings>("/api/settings") });

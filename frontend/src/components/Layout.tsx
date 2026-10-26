@@ -3,6 +3,7 @@ import {
   BarChart3,
   CalendarClock,
   LayoutDashboard,
+  LineChart,
   Moon,
   Settings,
   Sun,
@@ -18,6 +19,7 @@ import { UpdateBanner } from "./UpdateBanner";
 const NAV = [
   { to: "/", label: "Resumen", icon: LayoutDashboard },
   { to: "/patrimonio", label: "Patrimonio", icon: Wallet },
+  { to: "/inversiones", label: "Inversiones", icon: LineChart },
   { to: "/ingresos", label: "Ingresos", icon: TrendingUp },
   { to: "/gastos", label: "Gastos fijos", icon: CalendarClock },
   { to: "/analisis", label: "Análisis", icon: BarChart3 },
@@ -112,7 +114,7 @@ export function Layout() {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-6 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-7 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Navegación principal"
       >
         {NAV.map(({ to, label, icon: Icon }) => (

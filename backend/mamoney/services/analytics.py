@@ -136,6 +136,7 @@ def asset_rows(snap: Snapshot) -> list[Row]:
                 "liquidity": asset.liquidity,
                 "institution": asset.institution,
                 "archived": asset.archived,
+                "tracks_positions": asset.tracks_positions,
                 "value": current.value if current else None,
                 "value_base": _r(value_base),
                 "last_valuation": current.date.isoformat() if current else None,

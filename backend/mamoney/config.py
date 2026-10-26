@@ -29,6 +29,7 @@ class Config:
     port: int
     base_currency: str
     fx_auto_update: bool
+    quotes_auto_update: bool
     static_dir: Path
     update_check: bool
     update_repo: str
@@ -58,6 +59,7 @@ def get_config() -> Config:
         port=int(os.environ.get("MAMONEY_PORT", "8765")),
         base_currency="MXN",
         fx_auto_update=os.environ.get("MAMONEY_FX_AUTO", "1") == "1",
+        quotes_auto_update=os.environ.get("MAMONEY_QUOTES_AUTO", "1") == "1",
         static_dir=Path(os.environ.get("MAMONEY_STATIC_DIR", static_default)),
         update_check=os.environ.get("MAMONEY_UPDATE_CHECK", "1") == "1",
         update_repo=os.environ.get("MAMONEY_UPDATE_REPO", "ahiram1701/Mamoney"),

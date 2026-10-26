@@ -6,6 +6,7 @@ from collections.abc import Iterator
 os.environ["MAMONEY_DATA_DIR"] = tempfile.mkdtemp(prefix="mamoney-test-")
 os.environ["MAMONEY_FX_AUTO"] = "0"
 os.environ["MAMONEY_UPDATE_CHECK"] = "0"
+os.environ["MAMONEY_QUOTES_AUTO"] = "0"
 os.environ["MAMONEY_STATIC_DIR"] = tempfile.mkdtemp(prefix="mamoney-static-")
 
 import pytest

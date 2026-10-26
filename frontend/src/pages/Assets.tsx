@@ -1,5 +1,6 @@
-import { Archive, History, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Archive, History, LineChart, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import {
   useApiMutation,
@@ -27,6 +28,7 @@ import { money, pct, shortDate, todayIso } from "../lib/format";
 import { ASSET_TYPES, LIABILITY_TYPES, LIQUIDITY, label, type AssetType } from "../lib/labels";
 
 const TYPE_ORDER = Object.keys(ASSET_TYPES);
+const POSITION_TYPES = new Set(["investment", "crypto", "retirement"]);
 const LIQUIDITY_ORDER = Object.keys(LIQUIDITY);
 
 export function AssetsPage() {
@@ -195,13 +197,23 @@ function AssetTable({
                 </td>
                 <td className="py-2">
                   <div className="flex justify-end gap-1">
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => onValue(r)}
-                      title="Registrar nuevo valor"
-                    >
-                      <RefreshCw size={14} /> Valor
-                    </button>
+                    {r.tracks_positions ? (
+                      <Link
+                        className="btn btn-sm"
+                        to="/inversiones"
+                        title="Valor calculado con tus posiciones"
+                      >
+                        <LineChart size={14} /> Posiciones
+                      </Link>
+                    ) : (
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => onValue(r)}
+                        title="Registrar nuevo valor"
+                      >
+                        <RefreshCw size={14} /> Valor
+                      </button>
+                    )}
                     <button
                       className="btn btn-sm"
                       onClick={() => onHistory(r)}
@@ -236,6 +248,7 @@ function AssetForm({ asset, onClose }: { asset: Asset | "new" | null; onClose: (
     notes: current?.notes ?? "",
     initial_value: "",
     initial_date: todayIso(),
+    tracks_positions: false,
   });
   const create = useApiMutation("POST", "/api/assets");
   const update = useApiMutation("PATCH", `/api/assets/${current?.id}`);
@@ -255,7 +268,10 @@ function AssetForm({ asset, onClose }: { asset: Asset | "new" | null; onClose: (
       liquidity: LIABILITY_TYPES.has(form.type) ? "immediate" : form.liquidity,
       institution: form.institution || null,
       notes: form.notes || null,
-      ...(isNew && form.initial_value !== ""
+      ...(isNew
+        ? { tracks_positions: form.tracks_positions && POSITION_TYPES.has(form.type) }
+        : {}),
+      ...(isNew && !form.tracks_positions && form.initial_value !== ""
         ? { initial_value: Number(form.initial_value), initial_date: form.initial_date }
         : {}),
     };
@@ -319,7 +335,24 @@ function AssetForm({ asset, onClose }: { asset: Asset | "new" | null; onClose: (
             placeholder="Opcional"
           />
         </Field>
-        {isNew && (
+        {isNew && POSITION_TYPES.has(form.type) && (
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.tracks_positions}
+              onChange={(e) => setForm((f) => ({ ...f, tracks_positions: e.target.checked }))}
+            />
+            <span>
+              Llevar posiciones (acciones, ETFs o cripto)
+              <span className="block text-xs text-ink-3">
+                Registras compras y ventas en Inversiones y el valor se calcula con precios de
+                mercado.
+              </span>
+            </span>
+          </label>
+        )}
+        {isNew && !form.tracks_positions && (
           <>
             <Field label={LIABILITY_TYPES.has(form.type) ? "Saldo adeudado" : "Valor actual"}>
               <input

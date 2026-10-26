@@ -12,6 +12,7 @@ import { AssetsPage } from "./pages/Assets";
 import { DashboardPage } from "./pages/Dashboard";
 import { ExpensesPage } from "./pages/Expenses";
 import { IncomePage } from "./pages/Income";
+import { InvestmentsPage } from "./pages/Investments";
 import { SettingsPage } from "./pages/Settings";
 
 function PinGate() {
@@ -89,6 +90,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="patrimonio" element={<AssetsPage />} />
+          <Route path="inversiones" element={<InvestmentsPage />} />
           <Route path="ingresos" element={<IncomePage />} />
           <Route path="gastos" element={<ExpensesPage />} />
           <Route path="analisis" element={<AnalysisPage />} />

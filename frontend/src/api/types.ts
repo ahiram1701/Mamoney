@@ -10,6 +10,7 @@ export interface Asset {
   institution: string | null;
   notes: string | null;
   archived: boolean;
+  tracks_positions: boolean;
 }
 
 export interface AssetRow extends Omit<Asset, "notes"> {
@@ -210,4 +211,61 @@ export interface TailscaleStatus {
   hostname: string | null;
   login: string | null;
   error: string | null;
+}
+
+export type SecurityKind = "stock" | "etf" | "crypto" | "fund" | "other";
+
+export interface SecuritySearchResult {
+  symbol: string;
+  name: string | null;
+  kind: SecurityKind;
+  exchange: string | null;
+}
+
+export interface PositionRow {
+  account_id: number;
+  account: string;
+  security_id: number;
+  symbol: string;
+  name: string | null;
+  kind: SecurityKind;
+  currency: string;
+  quantity: number;
+  avg_cost: number;
+  cost: number;
+  price: number | null;
+  price_at: string | null;
+  value: number | null;
+  gain: number | null;
+  gain_pct: number | null;
+  realized: number;
+  value_base: number;
+  weight_pct: number | null;
+}
+
+export interface PositionsReport {
+  positions: PositionRow[];
+  value_base: number;
+  cost_base: number;
+  unrealized_base: number;
+  unrealized_pct: number | null;
+  realized_base: number;
+  missing_rates: string[];
+}
+
+export interface TradeRow {
+  id: number;
+  asset_id: number;
+  security_id: number;
+  date: string;
+  side: "buy" | "sell";
+  quantity: number;
+  price: number;
+  fee: number;
+  notes: string | null;
+  symbol: string;
+  security_name: string | null;
+  currency: string;
+  account: string;
+  total: number;
 }

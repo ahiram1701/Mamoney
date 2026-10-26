@@ -6,6 +6,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- Inversiones: cuentas con posiciones de acciones, ETFs de EE. UU. y cripto. Compras y ventas con
+  costo promedio, ganancia realizada y no realizada, precios de Yahoo Finance (respaldo Coinbase
+  para cripto) cada 30 min y valuación automática de la cuenta (mensual e histórica).
+
+### Corregido
+
+- Las migraciones desactivan las llaves foráneas: reconstruir una tabla podía borrar en cascada
+  las valuaciones. Prueba que migra una base con datos.
+- Los estilos de campos y botones permiten utilidades de Tailwind (p. ej. iconos dentro de campos).
+
 ## [0.2.4] - 2026-10-25
 
 ### Corregido
