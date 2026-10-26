@@ -113,14 +113,17 @@ HTTPS automático y no lo expone a internet.
 
 1. Instala [Tailscale](https://tailscale.com/download) en tu PC y en tus otros dispositivos con la misma cuenta.
 2. Habilita **HTTPS Certificates** en la [consola de DNS de Tailscale](https://login.tailscale.com/admin/dns).
-3. Con Mamoney abierto, ejecuta:
-   ```powershell
-   .\scripts\tailscale-serve.ps1
-   ```
-4. Abre `https://<tu-pc>.<tu-tailnet>.ts.net` desde cualquier dispositivo de tu tailnet.
-5. En **Ajustes → Acceso remoto**, limita el acceso a tu usuario de Tailscale y activa un PIN.
+3. En Mamoney, ve a **Ajustes → Acceso remoto** y pulsa **Publicar en Tailscale**.
+4. Escanea el código QR con el teléfono o abre la dirección `https://<tu-pc>.<tu-tailnet>.ts.net`
+   en cualquier dispositivo de tu tailnet. Puedes agregarla a la pantalla de inicio.
+5. Pulsa **Permitir solo mi cuenta** y, si quieres, activa un PIN.
 
-Para dejar de publicarlo: `.\scripts\tailscale-serve.ps1 -Off`.
+Para retirarlo, pulsa **Dejar de publicar**. Publicar y retirar solo se puede desde el propio
+equipo; desde otros dispositivos se ve el estado y la dirección.
+
+Si Tailscale pide autorizar Serve en tu red la primera vez, Mamoney muestra el enlace para
+aceptarlo. También puedes hacerlo desde la terminal con `scripts\tailscale-serve.ps1` (en el
+código) o `tailscale serve --bg --https=443 http://127.0.0.1:8765`.
 
 > **No uses `tailscale funnel`**: haría pública la URL. Mamoney rechaza a propósito las
 > peticiones sin identidad de Tailscale.

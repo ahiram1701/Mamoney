@@ -76,7 +76,7 @@ export function ExpensesPage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_380px]">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
         <Card
           title="Calendario de pagos"
           actions={
@@ -262,7 +262,7 @@ function ExpenseForm({
       title={current ? "Editar gasto fijo" : "Nuevo gasto fijo"}
       onClose={onClose}
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Concepto" className="sm:col-span-2">
           <input
             className="input"

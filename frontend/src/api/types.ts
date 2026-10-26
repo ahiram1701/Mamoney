@@ -200,3 +200,14 @@ export interface UpdateStatus {
   can_install: boolean;
   installing: boolean;
 }
+
+export interface TailscaleStatus {
+  installed: boolean;
+  running: boolean;
+  published: boolean;
+  https_enabled: boolean;
+  url: string | null;
+  hostname: string | null;
+  login: string | null;
+  error: string | null;
+}

@@ -17,6 +17,7 @@ import type {
   Projection,
   Settings,
   Summary,
+  TailscaleStatus,
   UpcomingPayment,
   UpdateStatus,
   Valuation,
@@ -121,6 +122,9 @@ export const useUpdateStatus = () =>
     staleTime: 10 * 60_000,
     refetchInterval: 30 * 60_000,
   });
+
+export const useTailscale = () =>
+  useQuery({ queryKey: ["tailscale"], queryFn: get<TailscaleStatus>("/api/tailscale") });
 
 export const useSettings = () =>
   useQuery({ queryKey: ["settings"], queryFn: get<Settings>("/api/settings") });

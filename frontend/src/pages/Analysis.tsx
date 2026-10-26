@@ -57,7 +57,7 @@ export function AnalysisPage() {
       <PageHeader title="Análisis" subtitle="Qué tan sólida es tu situación y hacia dónde va." />
       {s && <MissingRatesBanner currencies={s.missing_rates} />}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Independencia financiera" subtitle="Ingreso pasivo contra gastos fijos">
           <Meter
             value={s?.passive_coverage_pct ?? null}
@@ -105,7 +105,7 @@ export function AnalysisPage() {
         title="Proyección de patrimonio"
         subtitle="Interés compuesto mensual con aportación constante"
       >
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Años">
             <input
               className="input"

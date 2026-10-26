@@ -6,6 +6,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- Ajustes → Acceso remoto: botón para publicar y retirar Mamoney en Tailscale con un clic, con la
+  dirección para otros dispositivos, código QR para el teléfono y opción de permitir solo tu
+  cuenta. Si Tailscale necesita una autorización (HTTPS o Serve), muestra el enlace para darla.
+
+### Corregido
+
+- En pantallas de teléfono, algunas tarjetas eran más anchas que la pantalla y se cortaban.
+
 ## [0.2.2] - 2026-10-25
 
 > La versión 0.2.1 no llegó a publicarse: su verificación del ejecutable se quedó colgada en el

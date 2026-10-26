@@ -75,7 +75,7 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card
           title="Evolución del patrimonio"
           subtitle="Últimos 24 meses"

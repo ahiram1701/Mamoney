@@ -14,7 +14,16 @@ from sqlmodel import Session
 from mamoney import __version__
 from mamoney.config import get_config
 from mamoney.db import get_engine, init_db
-from mamoney.routers import analytics, assets, expenses, fx, income, system, updates
+from mamoney.routers import (
+    analytics,
+    assets,
+    expenses,
+    fx,
+    income,
+    system,
+    tailscale,
+    updates,
+)
 from mamoney.security import PUBLIC_PATHS, evaluate
 from mamoney.services import updater
 from mamoney.services.fx import refresh_rates
@@ -101,7 +110,7 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Frame-Options", "DENY")
         return response
 
-    for module in (assets, income, expenses, fx, analytics, system, updates):
+    for module in (assets, income, expenses, fx, analytics, system, updates, tailscale):
         app.include_router(module.router)
 
     static_dir = get_config().static_dir

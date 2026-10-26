@@ -69,7 +69,7 @@ export function AssetsPage() {
         <StatTile label="Patrimonio neto" value={money(totalAssets - totalDebt)} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_380px]">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
         <Card
           title="Cuentas y bienes"
           actions={
@@ -269,7 +269,7 @@ function AssetForm({ asset, onClose }: { asset: Asset | "new" | null; onClose: (
       title={isNew ? "Nuevo activo o deuda" : "Editar"}
       onClose={onClose}
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nombre" className="sm:col-span-2">
           <input
             className="input"
@@ -422,7 +422,7 @@ function ValuationForm({ row, onClose }: { row: AssetRow | null; onClose: () => 
   };
   return (
     <Modal open={row !== null} title={`Actualizar valor · ${row?.name ?? ""}`} onClose={onClose}>
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={`${row?.is_liability ? "Saldo adeudado" : "Valor"} (${row?.currency})`}>
           <input
             className="input"

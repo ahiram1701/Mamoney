@@ -54,6 +54,7 @@ Su código fuente está disponible en <https://github.com/moses-palmer/pystray>.
 | [Recharts](https://github.com/recharts/recharts) | MIT |
 | [Lucide](https://github.com/lucide-icons/lucide) | ISC |
 | [clsx](https://github.com/lukeed/clsx) | MIT |
+| [node-qrcode](https://github.com/soldair/node-qrcode) | MIT |
 | [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) (estilos generados) | MIT |
 
 ## Servicios externos

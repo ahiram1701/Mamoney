@@ -10,6 +10,7 @@ import {
   useSettings,
   useUpdateStatus,
 } from "../api/hooks";
+import { TailscalePanel } from "../components/TailscalePanel";
 import { InstallButton } from "../components/UpdateBanner";
 import { Card, ErrorText, Field, PageHeader } from "../components/ui";
 import { number, shortDate, todayIso } from "../lib/format";
@@ -18,7 +19,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Ajustes" />
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <FxCard />
         <AccessCard />
         <PreferencesCard />
@@ -86,7 +87,10 @@ function FxCard() {
           ))}
         </tbody>
       </table>
-      <form onSubmit={submit} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+      <form
+        onSubmit={submit}
+        className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
+      >
         <Field label="Moneda">
           <input
             className="input uppercase"
@@ -140,6 +144,8 @@ function AccessCard() {
       title="Acceso remoto (Tailscale)"
       subtitle="Quién puede abrir el dashboard desde otros dispositivos"
     >
+      <TailscalePanel />
+      <hr className="my-4 border-line" />
       <p className="mb-3 text-sm text-ink-2">
         Estás entrando desde{" "}
         <strong>{auth?.is_local ? "este equipo" : `Tailscale como ${auth?.identity}`}</strong>.
@@ -211,7 +217,7 @@ function PreferencesCard() {
   const retValue = ret ?? String(settings?.projection_annual_return_pct ?? "");
   return (
     <Card title="Preferencias">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field
           label="Monedas que usas"
           hint="Aparecen en los formularios y se actualizan automáticamente"

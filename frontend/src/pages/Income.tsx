@@ -134,7 +134,7 @@ export function IncomePage() {
         )}
       </Card>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card title="Fuentes de ingreso">
           {rows.length === 0 ? (
             <EmptyState title="Sin fuentes" />
@@ -294,7 +294,7 @@ function SourceForm({
       title={current ? "Editar fuente" : "Nueva fuente de ingreso"}
       onClose={onClose}
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nombre" className="sm:col-span-2">
           <input
             className="input"
@@ -428,7 +428,7 @@ function EntryForm({ source, onClose }: { source: IncomeSource | null; onClose: 
       title={`Registrar cobro · ${source?.name ?? ""}`}
       onClose={onClose}
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={`Monto bruto (${source?.currency})`}>
           <input
             className="input"
