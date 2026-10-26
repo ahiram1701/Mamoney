@@ -120,6 +120,10 @@ jobs:
           path: frontend/dist
       - run: uv sync --locked --all-extras --group build
       - run: uv run pyinstaller mamoney.spec --noconfirm
+      - name: Probar el ejecutable como descarga del navegador
+        shell: pwsh
+        timeout-minutes: 5
+        run: ./scripts/test-exe.ps1 -AppDir dist/Mamoney
       - uses: actions/upload-artifact@v7
         with:
           name: Mamoney-windows-${{ github.sha }}

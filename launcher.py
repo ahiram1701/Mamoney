@@ -284,8 +284,20 @@ def run() -> None:
     icon.stop()
 
 
+def enable_stack_traces() -> None:
+    """Diagnóstico: con MAMONEY_TRACE_SECONDS vuelca las pilas de todos los hilos cada N s."""
+    seconds = os.environ.get("MAMONEY_TRACE_SECONDS")
+    if not seconds:
+        return
+    import faulthandler
+
+    stacks = (get_config().data_dir / "stacks.log").open("w", encoding="utf-8")
+    faulthandler.dump_traceback_later(int(seconds), repeat=True, file=stacks)
+
+
 def main() -> None:
     log_file = setup_logging()
+    enable_stack_traces()
     try:
         run()
     except Exception:
