@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-25
+
 ### Añadido
 
 - Ajustes → Acceso remoto: botón para publicar y retirar Mamoney en Tailscale con un clic, con la
@@ -71,7 +73,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/ahiram1701/Mamoney/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ahiram1701/Mamoney/compare/v0.2.0...v0.2.2
 [0.2.0]: https://github.com/ahiram1701/Mamoney/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ahiram1701/Mamoney/releases/tag/v0.1.0
