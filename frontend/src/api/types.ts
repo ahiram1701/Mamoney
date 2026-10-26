@@ -258,14 +258,14 @@ export interface TradeRow {
   asset_id: number;
   security_id: number;
   date: string;
-  side: "buy" | "sell";
+  side: "buy" | "sell" | "balance";
   quantity: number;
-  price: number;
+  price: number | null;
   fee: number;
   notes: string | null;
   symbol: string;
   security_name: string | null;
   currency: string;
   account: string;
-  total: number;
+  total: number | null;
 }

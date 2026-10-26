@@ -1,11 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw, Search, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Plus, RefreshCw, Search, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApiMutation, useAssets, usePositions, useTrades } from "../api/hooks";
-import type { Asset, SecuritySearchResult } from "../api/types";
+import type { Asset, PositionRow, SecurityKind, SecuritySearchResult } from "../api/types";
 import { Donut } from "../components/charts/Charts";
 import { foldOther } from "../components/charts/palette";
 import {
@@ -20,6 +20,29 @@ import {
 } from "../components/ui";
 import { money, number, pct, shortDate, todayIso } from "../lib/format";
 import { MissingRatesBanner } from "./Dashboard";
+
+const SIDE = {
+  buy: { label: "Compra", className: "text-good" },
+  sell: { label: "Venta", className: "text-critical" },
+  balance: { label: "Saldo", className: "text-ink-2" },
+} as const;
+
+/** Instrumento y cuenta precargados al actualizar un saldo existente. */
+interface BalanceTarget {
+  symbol?: string;
+  name?: string | null;
+  kind?: SecurityKind;
+  quantity?: number;
+  accountId?: number;
+}
+
+const targetOf = (p: PositionRow): BalanceTarget => ({
+  symbol: p.symbol,
+  name: p.name,
+  kind: p.kind,
+  quantity: p.quantity,
+  accountId: p.account_id,
+});
 
 const KIND_LABEL: Record<string, string> = {
   stock: "Acción",
@@ -58,6 +81,7 @@ export function InvestmentsPage() {
   const { data: report } = usePositions();
   const { data: trades = [] } = useTrades();
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [balanceFor, setBalanceFor] = useState<BalanceTarget | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<unknown>(null);
@@ -128,6 +152,9 @@ export function InvestmentsPage() {
               <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Actualizar
               precios
             </button>
+            <button className="btn" onClick={() => setBalanceFor({})}>
+              <Wallet size={16} /> Agregar saldo
+            </button>
             <button className="btn btn-primary" onClick={() => setTradeOpen(true)}>
               <Plus size={16} /> Registrar operación
             </button>
@@ -167,7 +194,9 @@ export function InvestmentsPage() {
           subtitle="Precio y valor en la moneda del instrumento; peso sobre el total en MXN"
         >
           {positions.length === 0 ? (
-            <EmptyState title="Sin posiciones abiertas">Registra tu primera compra.</EmptyState>
+            <EmptyState title="Sin posiciones abiertas">
+              Agrega el saldo que ya tienes o registra tu primera compra.
+            </EmptyState>
           ) : (
             <>
               {/* Teléfono: tarjetas con valor y ganancia a la vista. */}
@@ -186,9 +215,14 @@ export function InvestmentsPage() {
                         <Gain value={p.gain} pctValue={p.gain_pct} currency={p.currency} />
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-ink-3">
-                      Costo prom. {money(p.avg_cost, p.currency)} · {pct(p.weight_pct)} del total
-                    </p>
+                    <div className="mt-1 flex items-center justify-between gap-3 text-xs text-ink-3">
+                      <p>
+                        Costo prom. {money(p.avg_cost, p.currency)} · {pct(p.weight_pct)} del total
+                      </p>
+                      <button className="btn btn-sm" onClick={() => setBalanceFor(targetOf(p))}>
+                        Saldo
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -203,6 +237,7 @@ export function InvestmentsPage() {
                       <th className="py-2 text-right font-medium">Valor</th>
                       <th className="py-2 text-right font-medium">Ganancia</th>
                       <th className="py-2 text-right font-medium">Peso</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
@@ -225,6 +260,15 @@ export function InvestmentsPage() {
                           <Gain value={p.gain} pctValue={p.gain_pct} currency={p.currency} />
                         </td>
                         <td className="tabular py-2 text-right text-ink-2">{pct(p.weight_pct)}</td>
+                        <td className="py-2 text-right">
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => setBalanceFor(targetOf(p))}
+                            title="Corregir cuántos títulos tienes"
+                          >
+                            Saldo
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -269,9 +313,7 @@ export function InvestmentsPage() {
                   <tr key={t.id} className="border-b border-line">
                     <td className="tabular py-2 text-ink-3">{shortDate(t.date)}</td>
                     <td className="py-2">
-                      <span className={t.side === "buy" ? "text-good" : "text-critical"}>
-                        {t.side === "buy" ? "Compra" : "Venta"}
-                      </span>{" "}
+                      <span className={SIDE[t.side].className}>{SIDE[t.side].label}</span>{" "}
                       <strong>{t.symbol}</strong>
                     </td>
                     <td className="tabular py-2 text-right">{number(t.quantity, 8)}</td>
@@ -309,6 +351,14 @@ export function InvestmentsPage() {
       </Card>
 
       <TradeForm open={tradeOpen} accounts={accounts} onClose={() => setTradeOpen(false)} />
+      <BalanceForm
+        key={
+          balanceFor ? `${balanceFor.symbol ?? "nuevo"}-${balanceFor.accountId ?? ""}` : "cerrado"
+        }
+        target={balanceFor}
+        accounts={accounts}
+        onClose={() => setBalanceFor(null)}
+      />
       <AccountForm open={accountOpen} onClose={() => setAccountOpen(false)} />
     </>
   );
@@ -531,6 +581,144 @@ function TradeForm({
         <div className="flex justify-end sm:col-span-2">
           <button className="btn btn-primary" disabled={!picked || add.isPending}>
             {add.isPending ? "Guardando…" : "Guardar operación"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function BalanceForm({
+  target,
+  accounts,
+  onClose,
+}: {
+  target: BalanceTarget | null;
+  accounts: Asset[];
+  onClose: () => void;
+}) {
+  const [picked, setPicked] = useState<SecuritySearchResult | null>(
+    target?.symbol
+      ? {
+          symbol: target.symbol,
+          name: target.name ?? null,
+          kind: target.kind ?? "other",
+          exchange: null,
+        }
+      : null,
+  );
+  const [form, setForm] = useState({
+    asset_id: target?.accountId ? String(target.accountId) : "",
+    quantity: target?.quantity != null ? String(target.quantity) : "",
+    date: todayIso(),
+    price: "",
+  });
+  const add = useApiMutation("POST", "/api/portfolio/trades");
+  const accountId = form.asset_id || String(accounts[0]?.id ?? "");
+  const updating = target?.quantity != null;
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!picked) return;
+    await add.mutateAsync({
+      asset_id: Number(accountId),
+      symbol: picked.symbol,
+      kind: picked.kind,
+      side: "balance",
+      date: form.date,
+      quantity: Number(form.quantity),
+      price: form.price === "" ? null : Number(form.price),
+    });
+    onClose();
+  };
+
+  return (
+    <Modal
+      open={target !== null}
+      title={updating ? `Actualizar saldo · ${picked?.symbol ?? ""}` : "Agregar saldo"}
+      onClose={onClose}
+    >
+      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        <p className="text-sm text-ink-2 sm:col-span-2">
+          Escribe cuántos títulos tienes en total. Mamoney mantiene el precio actualizado; no
+          necesitas registrar cada compra o venta.
+        </p>
+        <div className="sm:col-span-2">
+          {picked ? (
+            <div className="flex items-center justify-between rounded-lg border border-line p-3 text-sm">
+              <div>
+                <p className="font-semibold">{picked.symbol}</p>
+                <p className="text-xs text-ink-3">
+                  {KIND_LABEL[picked.kind]} {picked.name ? `· ${picked.name}` : ""}
+                </p>
+              </div>
+              {!updating && (
+                <button type="button" className="btn btn-sm" onClick={() => setPicked(null)}>
+                  Cambiar
+                </button>
+              )}
+            </div>
+          ) : (
+            <SymbolSearch onPick={setPicked} />
+          )}
+        </div>
+        <Field
+          label="Cantidad que tienes"
+          hint="Admite fracciones (p. ej. 0.05 BTC). 0 = ya no tengo"
+        >
+          <input
+            className="input"
+            type="number"
+            step="any"
+            min="0"
+            required
+            value={form.quantity}
+            onChange={set("quantity")}
+          />
+        </Field>
+        <Field label="A la fecha">
+          <input
+            className="input"
+            type="date"
+            required
+            max={todayIso()}
+            value={form.date}
+            onChange={set("date")}
+          />
+        </Field>
+        {accounts.length > 1 && !updating && (
+          <Field label="Cuenta">
+            <select className="input" value={accountId} onChange={set("asset_id")}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        <Field
+          label="Costo promedio por título (opcional)"
+          hint="Si lo dejas vacío, la ganancia se mide desde el precio de esa fecha."
+          className="sm:col-span-2"
+        >
+          <input
+            className="input"
+            type="number"
+            step="any"
+            min="0"
+            value={form.price}
+            onChange={set("price")}
+          />
+        </Field>
+        <div className="sm:col-span-2">
+          <ErrorText error={add.error} />
+        </div>
+        <div className="flex justify-end sm:col-span-2">
+          <button className="btn btn-primary" disabled={!picked || add.isPending}>
+            {add.isPending ? "Guardando…" : "Guardar saldo"}
           </button>
         </div>
       </form>

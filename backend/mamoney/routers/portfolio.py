@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlmodel import Session, col, select
 
 from mamoney.db import get_engine
@@ -21,10 +21,19 @@ class TradeCreate(BaseModel):
     kind: SecurityKind | None = None
     date: dt.date
     side: TradeSide = TradeSide.buy
-    quantity: float = Field(gt=0)
-    price: float = Field(ge=0)
+    quantity: float = Field(ge=0)
+    price: float | None = Field(default=None, ge=0)
     fee: float = Field(default=0, ge=0)
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _check_side(self) -> "TradeCreate":
+        if self.side != TradeSide.balance:
+            if self.price is None:
+                raise ValueError("Las compras y ventas requieren el precio por título")
+            if self.quantity <= 0:
+                raise ValueError("La cantidad debe ser mayor que cero")
+        return self
 
 
 def _tracked_account(session: Session, asset_id: int) -> Asset:
@@ -76,10 +85,14 @@ def list_trades(session: SessionDep, asset_id: int | None = None) -> list[dict[s
             "security_name": sec.name,
             "currency": sec.currency,
             "account": asset.name,
-            "total": round(
-                trade.quantity * trade.price
-                + (trade.fee if trade.side == TradeSide.buy else -trade.fee),
-                2,
+            "total": (
+                None
+                if trade.price is None
+                else round(
+                    trade.quantity * trade.price
+                    + (-trade.fee if trade.side == TradeSide.sell else trade.fee),
+                    2,
+                )
             ),
         }
         for trade, sec, asset in rows
@@ -96,7 +109,7 @@ def add_trade(data: TradeCreate, session: SessionDep) -> dict[str, Any]:
             security_id=security.id,  # type: ignore[arg-type]
             **data.model_dump(exclude={"asset_id", "symbol", "kind"}),
         )
-        # Valida que las ventas no superen los títulos en ninguna fecha.
+        # Valida que las ventas no superen los títulos en ninguna fecha (incluidos saldos).
         portfolio.apply_trades([*portfolio.account_trades(session, asset.id), trade])  # type: ignore[arg-type]
     except portfolio.PortfolioError as exc:
         session.rollback()

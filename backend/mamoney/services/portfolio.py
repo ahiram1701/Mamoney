@@ -10,6 +10,7 @@ import bisect
 import datetime as dt
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -60,7 +61,17 @@ class Book:
     positions: dict[int, Position] = field(default_factory=dict)
 
 
-def apply_trades(trades: list[Trade], until: dt.date | None = None) -> Book:
+CostFor = Callable[[Trade], float | None]
+
+
+def apply_trades(
+    trades: list[Trade], until: dt.date | None = None, cost_for: CostFor | None = None
+) -> Book:
+    """Aplica las operaciones en orden.
+
+    `cost_for(trade)` da el costo por título de un saldo capturado sin precio (normalmente el
+    cierre de mercado de esa fecha). Sin él, esos títulos entran con costo 0.
+    """
     book = Book()
     # Mismo día: por orden de captura; una operación aún sin guardar (sin id) va al final.
     ordered = sorted(trades, key=lambda t: (t.date, t.id if t.id is not None else float("inf")))
@@ -71,9 +82,23 @@ def apply_trades(trades: list[Trade], until: dt.date | None = None) -> Book:
         pos.fees += trade.fee
         if pos.first_date is None:
             pos.first_date = trade.date
-        if trade.side == TradeSide.buy:
+        if trade.side == TradeSide.balance:
+            delta = trade.quantity - pos.quantity
+            if delta > EPSILON:
+                unit_cost = trade.price
+                if unit_cost is None and cost_for is not None:
+                    unit_cost = cost_for(trade)
+                pos.cost += delta * (unit_cost or 0.0) + trade.fee
+                pos.quantity = trade.quantity
+            elif delta < -EPSILON:
+                # Salen títulos sin venta: se descuentan al costo promedio, sin ganancia realizada.
+                pos.cost -= pos.avg_cost * -delta
+                pos.quantity = trade.quantity
+            if pos.quantity < EPSILON:
+                pos.quantity, pos.cost = 0.0, 0.0
+        elif trade.side == TradeSide.buy:
             pos.quantity += trade.quantity
-            pos.cost += trade.quantity * trade.price + trade.fee
+            pos.cost += trade.quantity * (trade.price or 0.0) + trade.fee
         else:
             if trade.quantity > pos.quantity + EPSILON:
                 raise PortfolioError(
@@ -81,7 +106,7 @@ def apply_trades(trades: list[Trade], until: dt.date | None = None) -> Book:
                     f"({pos.quantity:g})"
                 )
             released = pos.avg_cost * trade.quantity
-            pos.realized += trade.quantity * trade.price - trade.fee - released
+            pos.realized += trade.quantity * (trade.price or 0.0) - trade.fee - released
             pos.cost -= released
             pos.quantity -= trade.quantity
             if pos.quantity < EPSILON:
@@ -128,6 +153,11 @@ class PriceBook:
         if idx >= 0:
             return self._closes[security_id][idx]
         return None
+
+
+def market_cost(prices: "PriceBook") -> CostFor:
+    """Costo de un saldo sin precio: el cierre de mercado de su fecha."""
+    return lambda trade: prices.price(trade.security_id, trade.date)
 
 
 def _convert(fx: FxTable, amount: float, from_cur: str, to_cur: str, on: dt.date) -> float:
@@ -212,7 +242,7 @@ def account_value(
     fx: FxTable,
     on: dt.date,
 ) -> float:
-    book = apply_trades(trades, until=on)
+    book = apply_trades(trades, until=on, cost_for=market_cost(prices))
     total = 0.0
     for pos in book.positions.values():
         if pos.quantity < EPSILON:
@@ -320,12 +350,12 @@ def positions_report(session: Session, asset_id: int | None = None) -> dict[str,
         trades = account_trades(session, account.id)  # type: ignore[arg-type]
         if not trades:
             continue
-        book = apply_trades(trades)
-        ids = set(book.positions)
+        ids = {t.security_id for t in trades}
+        prices = PriceBook(session, ids)
+        book = apply_trades(trades, cost_for=market_cost(prices))
         securities = {
             s.id: s for s in session.exec(select(Security).where(col(Security.id).in_(ids)))
         }
-        prices = PriceBook(session, ids)
         for pos in book.positions.values():
             sec = securities[pos.security_id]
             totals["realized_base"] += to_base(pos.realized, sec.currency)

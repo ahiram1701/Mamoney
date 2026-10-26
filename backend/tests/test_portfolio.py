@@ -286,3 +286,102 @@ def test_refresh_updates_prices_and_mxn_account(client: TestClient, market) -> N
     row = client.get("/api/analytics/assets").json()
     broker = next(r for r in row if r["id"] == account)
     assert broker["value"] == 2 * 250 * 20
+
+
+# --- Saldos sin compras ni ventas ---------------------------------------------------------
+
+
+def _balance(day: int, qty: float, price: float | None = None, tid: int = 0) -> Trade:
+    return Trade(
+        id=tid or day,
+        asset_id=1,
+        security_id=1,
+        date=dt.date(2026, 1, day),
+        side=TradeSide.balance,
+        quantity=qty,
+        price=price,
+    )
+
+
+def test_balance_without_price_uses_market_cost() -> None:
+    book = portfolio.apply_trades([_balance(2, 0.5)], cost_for=lambda t: 60000.0)
+    pos = book.positions[1]
+    assert pos.quantity == 0.5 and pos.cost == pytest.approx(30000)
+
+
+def test_balance_with_price_and_later_adjustments() -> None:
+    book = portfolio.apply_trades(
+        [
+            _balance(2, 10, price=100),  # tengo 10 a costo 100
+            _balance(5, 12),  # +2 al precio de mercado
+            _trade(6, TradeSide.sell, 4, 150, tid=60),  # venta normal sobre el saldo
+            _balance(8, 5),  # -3 sin venta: sin ganancia realizada
+        ],
+        cost_for=lambda t: 130.0,
+    )
+    pos = book.positions[1]
+    avg_after_topup = (1000 + 2 * 130) / 12
+    assert pos.realized == pytest.approx(4 * 150 - 4 * avg_after_topup)
+    assert pos.quantity == 5
+    assert pos.avg_cost == pytest.approx(avg_after_topup)
+
+
+def test_balance_zero_closes_position() -> None:
+    book = portfolio.apply_trades([_balance(2, 3, price=10), _balance(4, 0)])
+    assert book.positions[1].quantity == 0 and book.positions[1].cost == 0
+    assert book.positions[1].realized == 0
+
+
+def test_balance_api_tracks_live_price(client: TestClient, session: Session, market) -> None:  # type: ignore[no-untyped-def]
+    client.post("/api/fx/rates", json={"currency": "USD", "date": "2020-01-01", "rate_to_base": 20})
+    start = TODAY - dt.timedelta(days=40)
+    market["history"]["BTC-USD"] = [
+        (start + dt.timedelta(days=i), 60000.0 + i * 100) for i in range(41)
+    ]
+    account = _account(client)
+    r = client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "btc",
+            "kind": "crypto",
+            "side": "balance",
+            "date": start.isoformat(),
+            "quantity": 0.5,
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    pos = client.get("/api/portfolio/positions").json()["positions"][0]
+    assert pos["quantity"] == 0.5
+    assert pos["cost"] == 30000  # 0.5 x cierre del día del saldo (60000)
+    assert pos["value"] == 40000  # 0.5 x precio en vivo (80000)
+
+    trades = client.get("/api/portfolio/trades").json()
+    assert trades[0]["side"] == "balance" and trades[0]["total"] is None
+
+    vals = session.exec(select(AssetValuation).where(AssetValuation.asset_id == account)).all()
+    assert {v.date: v.value for v in vals}[start] == 30000
+
+    # Actualizar el saldo hoy: suben los títulos y el valor sigue el precio en vivo.
+    client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "BTC-USD",
+            "side": "balance",
+            "date": TODAY.isoformat(),
+            "quantity": 0.6,
+        },
+    )
+    pos = client.get("/api/portfolio/positions").json()["positions"][0]
+    assert pos["quantity"] == 0.6 and pos["value"] == pytest.approx(48000)
+
+
+def test_buy_and_sell_still_require_price(client: TestClient, market) -> None:  # type: ignore[no-untyped-def]
+    account = _account(client)
+    r = client.post(
+        "/api/portfolio/trades",
+        json={"asset_id": account, "symbol": "AAPL", "date": TODAY.isoformat(), "quantity": 1},
+    )
+    assert r.status_code == 422

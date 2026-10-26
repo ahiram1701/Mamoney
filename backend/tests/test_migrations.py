@@ -58,3 +58,41 @@ def test_upgrade_from_first_version_keeps_all_data(tmp_path: Path) -> None:
         assert conn.execute(text("SELECT tracks_positions FROM asset")).scalar_one() == 0
         assert conn.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
     engine.dispose()
+
+
+def test_upgrade_keeps_trades_and_allows_balances(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "mamoney.db")
+    init_db(engine, revision="0002")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO asset (id, name, type, is_liability, currency, liquidity, archived,"
+                " tracks_positions, created_at) VALUES (1, 'Broker', 'investment', 0, 'USD',"
+                " 'short', 0, 1, '2026-01-01')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO security (id, symbol, kind, currency) VALUES (1, 'VOO', 'etf', 'USD')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO trade (id, asset_id, security_id, date, side, quantity, price, fee)"
+                " VALUES (1, 1, 1, '2026-01-02', 'buy', 3, 500, 1)"
+            )
+        )
+
+    init_db(engine)
+
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT side, quantity, price FROM trade WHERE id = 1")).one()
+        assert tuple(row) == ("buy", 3, 500)
+        conn.execute(
+            text(
+                "INSERT INTO trade (asset_id, security_id, date, side, quantity, price, fee)"
+                " VALUES (1, 1, '2026-02-01', 'balance', 5, NULL, 0)"
+            )
+        )
+        assert conn.execute(text("SELECT count(*) FROM trade")).scalar_one() == 2
+    engine.dispose()

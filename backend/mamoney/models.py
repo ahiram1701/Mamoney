@@ -189,6 +189,8 @@ class SecurityKind(StrEnum):
 class TradeSide(StrEnum):
     buy = "buy"
     sell = "sell"
+    # "En esta fecha tengo exactamente `quantity` títulos" (sin detallar compras o ventas).
+    balance = "balance"
 
 
 class Security(SQLModel, table=True):
@@ -216,8 +218,9 @@ class SecurityPrice(SQLModel, table=True):
 class TradeBase(SQLModel):
     date: dt.date
     side: TradeSide = TradeSide.buy
-    quantity: float = Field(gt=0)
-    price: float = Field(ge=0)
+    quantity: float = Field(ge=0)  # 0 solo tiene sentido en un saldo ("ya no tengo")
+    # En un saldo es opcional: sin precio, el costo es el precio de mercado de esa fecha.
+    price: float | None = Field(default=None, ge=0)
     fee: float = Field(default=0, ge=0)
     notes: str | None = None
 

@@ -6,6 +6,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- Inversiones → **Agregar saldo**: registra cuántos títulos tienes (p. ej. 0.05 BTC) sin capturar
+  compras ni ventas; el precio se mantiene actualizado. El costo es opcional (si falta, se usa el
+  precio de mercado de esa fecha) y el botón **Saldo** de cada posición permite corregirlo después.
+
 ## [0.2.5] - 2026-10-25
 
 ### Añadido
