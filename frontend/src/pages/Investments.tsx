@@ -169,44 +169,68 @@ export function InvestmentsPage() {
           {positions.length === 0 ? (
             <EmptyState title="Sin posiciones abiertas">Registra tu primera compra.</EmptyState>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs text-ink-3">
-                    <th className="py-2 font-medium">Instrumento</th>
-                    <th className="py-2 text-right font-medium">Títulos</th>
-                    <th className="py-2 text-right font-medium">Costo prom.</th>
-                    <th className="py-2 text-right font-medium">Precio</th>
-                    <th className="py-2 text-right font-medium">Valor</th>
-                    <th className="py-2 text-right font-medium">Ganancia</th>
-                    <th className="py-2 text-right font-medium">Peso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {positions.map((p) => (
-                    <tr key={`${p.account_id}-${p.security_id}`} className="border-b border-line">
-                      <td className="py-2">
-                        <p className="font-semibold">{p.symbol}</p>
-                        <p className="max-w-[220px] truncate text-xs text-ink-3">
-                          {KIND_LABEL[p.kind]} · {p.name ?? ""}{" "}
-                          {accounts.length > 1 ? `· ${p.account}` : ""}
-                        </p>
-                      </td>
-                      <td className="tabular py-2 text-right">{number(p.quantity, 8)}</td>
-                      <td className="tabular py-2 text-right">{money(p.avg_cost, p.currency)}</td>
-                      <td className="tabular py-2 text-right">{money(p.price, p.currency)}</td>
-                      <td className="tabular py-2 text-right font-medium">
-                        {money(p.value, p.currency)}
-                      </td>
-                      <td className="tabular py-2 text-right">
+            <>
+              {/* Teléfono: tarjetas con valor y ganancia a la vista. */}
+              <ul className="divide-y divide-line md:hidden">
+                {positions.map((p) => (
+                  <li key={`${p.account_id}-${p.security_id}`} className="py-3 text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="font-semibold">{p.symbol}</p>
+                      <p className="tabular font-semibold">{money(p.value, p.currency)}</p>
+                    </div>
+                    <div className="mt-0.5 flex items-baseline justify-between gap-3 text-xs">
+                      <p className="min-w-0 truncate text-ink-3">
+                        {number(p.quantity, 8)} × {money(p.price, p.currency)}
+                      </p>
+                      <span className="tabular shrink-0">
                         <Gain value={p.gain} pctValue={p.gain_pct} currency={p.currency} />
-                      </td>
-                      <td className="tabular py-2 text-right text-ink-2">{pct(p.weight_pct)}</td>
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-ink-3">
+                      Costo prom. {money(p.avg_cost, p.currency)} · {pct(p.weight_pct)} del total
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left text-xs text-ink-3">
+                      <th className="py-2 font-medium">Instrumento</th>
+                      <th className="py-2 text-right font-medium">Títulos</th>
+                      <th className="py-2 text-right font-medium">Costo prom.</th>
+                      <th className="py-2 text-right font-medium">Precio</th>
+                      <th className="py-2 text-right font-medium">Valor</th>
+                      <th className="py-2 text-right font-medium">Ganancia</th>
+                      <th className="py-2 text-right font-medium">Peso</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {positions.map((p) => (
+                      <tr key={`${p.account_id}-${p.security_id}`} className="border-b border-line">
+                        <td className="py-2">
+                          <p className="font-semibold">{p.symbol}</p>
+                          <p className="max-w-[220px] truncate text-xs text-ink-3">
+                            {KIND_LABEL[p.kind]} · {p.name ?? ""}{" "}
+                            {accounts.length > 1 ? `· ${p.account}` : ""}
+                          </p>
+                        </td>
+                        <td className="tabular py-2 text-right">{number(p.quantity, 8)}</td>
+                        <td className="tabular py-2 text-right">{money(p.avg_cost, p.currency)}</td>
+                        <td className="tabular py-2 text-right">{money(p.price, p.currency)}</td>
+                        <td className="tabular py-2 text-right font-medium">
+                          {money(p.value, p.currency)}
+                        </td>
+                        <td className="tabular py-2 text-right">
+                          <Gain value={p.gain} pctValue={p.gain_pct} currency={p.currency} />
+                        </td>
+                        <td className="tabular py-2 text-right text-ink-2">{pct(p.weight_pct)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
 

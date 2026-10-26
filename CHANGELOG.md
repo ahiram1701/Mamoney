@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-25
+
 ### Añadido
 
 - Inversiones: cuentas con posiciones de acciones, ETFs de EE. UU. y cripto. Compras y ventas con
@@ -17,6 +19,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Las migraciones desactivan las llaves foráneas: reconstruir una tabla podía borrar en cascada
   las valuaciones. Prueba que migra una base con datos.
 - Los estilos de campos y botones permiten utilidades de Tailwind (p. ej. iconos dentro de campos).
+- Tras actualizar, el navegador ya no muestra la versión anterior: `index.html` se sirve sin caché.
+- En el teléfono, las posiciones se muestran como tarjetas con valor y ganancia a la vista.
 
 ## [0.2.4] - 2026-10-25
 
@@ -94,7 +98,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/ahiram1701/Mamoney/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/ahiram1701/Mamoney/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/ahiram1701/Mamoney/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ahiram1701/Mamoney/compare/v0.2.0...v0.2.2

@@ -156,7 +156,9 @@ def create_app() -> FastAPI:
             candidate = (static_dir / path).resolve()
             if path and candidate.is_file() and static_dir.resolve() in candidate.parents:
                 return FileResponse(candidate)
-            return FileResponse(index)
+            # index.html apunta a los archivos de la versión actual: el navegador debe
+            # revalidarlo siempre o, tras una actualización, seguiría cargando la anterior.
+            return FileResponse(index, headers={"Cache-Control": "no-cache"})
     else:
 
         @app.get("/", include_in_schema=False)

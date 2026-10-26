@@ -116,3 +116,31 @@ def test_projection_endpoint(client: TestClient) -> None:
     ).json()
     assert len(data["points"]) == 4
     assert data["annual_return_pct"] == 5
+
+
+def test_index_is_never_cached(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import importlib
+    import os
+
+    import mamoney.config as config
+    import mamoney.main as main
+
+    static = tmp_path / "dist"
+    (static / "assets").mkdir(parents=True)
+    (static / "index.html").write_text("<div id=root></div>")
+    original = os.environ.get("MAMONEY_STATIC_DIR")
+    os.environ["MAMONEY_STATIC_DIR"] = str(static)
+    config.get_config.cache_clear()
+    try:
+        app = importlib.reload(main).create_app()
+        with TestClient(app, base_url="http://127.0.0.1:8765", client=("127.0.0.1", 1)) as c:
+            r = c.get("/inversiones")
+            assert r.status_code == 200
+            assert r.headers["cache-control"] == "no-cache"
+    finally:
+        if original is None:
+            os.environ.pop("MAMONEY_STATIC_DIR", None)
+        else:
+            os.environ["MAMONEY_STATIC_DIR"] = original
+        config.get_config.cache_clear()
+        importlib.reload(main)
