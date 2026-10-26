@@ -5,6 +5,7 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
@@ -28,6 +29,9 @@ from mamoney.security import PUBLIC_PATHS, evaluate
 from mamoney.services import updater
 from mamoney.services.fx import refresh_rates
 from mamoney.settings_store import get_setting
+
+if TYPE_CHECKING:
+    import uvicorn
 
 log = logging.getLogger("mamoney")
 
@@ -139,12 +143,27 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-def run() -> None:
+def server_config(**overrides: Any) -> "uvicorn.Config":
+    """Configuración de Uvicorn compartida por el servidor y la app de escritorio.
+
+    `proxy_headers=False` es imprescindible: `tailscale serve` se conecta desde 127.0.0.1 y
+    añade `X-Forwarded-For` con la IP del teléfono. Si Uvicorn confiara en esa cabecera,
+    reescribiría el cliente con esa IP y el control de acceso rechazaría a la propia tailnet.
+    La identidad del usuario se toma de `Tailscale-User-Login`, no de la IP.
+    """
     import uvicorn
 
     cfg = get_config()
+    options: dict[str, Any] = {"host": cfg.host, "port": cfg.port, "proxy_headers": False}
+    options.update(overrides)
+    return uvicorn.Config(app, **options)
+
+
+def run() -> None:
+    import uvicorn
+
     logging.basicConfig(level=logging.INFO)
-    uvicorn.run(app, host=cfg.host, port=cfg.port, log_level="info")
+    uvicorn.Server(server_config(log_level="info")).run()
 
 
 if __name__ == "__main__":

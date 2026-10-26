@@ -57,7 +57,7 @@ import uvicorn
 from PIL import Image, ImageDraw
 
 from mamoney.config import get_config
-from mamoney.main import app
+from mamoney.main import server_config
 from mamoney.routers.system import backup_database
 from mamoney.services import updater
 
@@ -110,7 +110,7 @@ def already_running() -> bool:
 
 def start_server() -> Server:
     cfg = get_config()
-    server = Server(uvicorn.Config(app, host=cfg.host, port=cfg.port, log_config=None))
+    server = Server(server_config(log_config=None))
     threading.Thread(target=server.run, daemon=True, name="uvicorn").start()
     for _ in range(150):
         if already_running():

@@ -6,6 +6,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- El acceso desde otros dispositivos por Tailscale respondía "Acceso solo desde este equipo o tu
+  tailnet". Uvicorn confiaba en la cabecera `X-Forwarded-For` de `tailscale serve` y cambiaba la
+  IP del cliente; ahora Mamoney usa la conexión real y te identifica con tu cuenta de Tailscale.
+- Prueba con un Uvicorn real para que este caso no vuelva a pasar inadvertido.
+
 ## [0.2.3] - 2026-10-25
 
 ### Añadido
