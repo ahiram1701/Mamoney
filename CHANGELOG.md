@@ -20,7 +20,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   abre el dashboard en el navegador en lugar de cerrarse.
 - Registro en `%APPDATA%\Mamoney\mamoney.log` y aviso claro si la app no puede iniciar.
 - Abrir Mamoney cuando ya está en ejecución muestra el dashboard existente en lugar de duplicarlo.
-- El flujo de Release prueba el ejecutable con sus archivos marcados como descargados.
+- El CI y el flujo de Release prueban el ejecutable con sus archivos marcados como descargados
+  (`scripts/test-exe.ps1`), con tiempos límite y diagnóstico de hilos.
+- Con la revisión automática desactivada, Mamoney ya no consulta GitHub al abrir el dashboard;
+  solo al pulsar "Buscar ahora".
 
 ## [0.2.0] - 2026-10-24
 

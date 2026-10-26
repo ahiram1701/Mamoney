@@ -38,7 +38,13 @@ function Get-Health {
     try { return Invoke-RestMethod -TimeoutSec 3 "http://127.0.0.1:$Port/api/health" } catch { return $null }
 }
 
-$p = Start-Process (Join-Path $app "Mamoney.exe") -ArgumentList "--hidden" -PassThru
+# Start-Process usa el shell de Windows, que con un .exe marcado muestra el diálogo
+# "¿Desea ejecutar este archivo?" y se queda esperando un clic. CreateProcess directo
+# (UseShellExecute = false) no lo muestra; las DLL siguen marcadas, que es lo que se prueba.
+$psi = [Diagnostics.ProcessStartInfo]::new((Join-Path $app "Mamoney.exe"), "--hidden")
+$psi.UseShellExecute = $false
+$psi.WorkingDirectory = $app
+$p = [Diagnostics.Process]::Start($psi)
 $failure = $null
 try {
     $health = $null

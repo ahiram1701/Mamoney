@@ -188,3 +188,17 @@ def test_updates_api(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_install_api_is_local_only(tailnet_client: TestClient) -> None:
     assert tailnet_client.post("/api/updates/install").status_code == 403
+
+
+def test_status_without_auto_check_does_not_call_github(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(updater, "_status", None)
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("no debe consultar GitHub")
+
+    monkeypatch.setattr(updater, "check_for_updates", boom)
+    data = client.get("/api/updates").json()
+    assert data["available"] is False
+    assert data["latest"] is None
