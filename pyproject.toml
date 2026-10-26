@@ -1,6 +1,6 @@
 [project]
 name = "mamoney"
-version = "0.2.3"
+version = "0.2.4"
 description = "Gestor personal de patrimonio, ingresos y gastos fijos con dashboard web privado vía Tailscale."
 readme = "README.md"
 license = { file = "LICENSE" }
