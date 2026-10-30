@@ -15,6 +15,9 @@ DEFAULTS: dict[str, Any] = {
     "session_secret": None,
     "projection_annual_return_pct": 7.0,
     "auto_update_check": True,
+    "alerts_enabled": True,
+    "alert_days": 3,
+    "notified_alerts": {},
 }
 
 

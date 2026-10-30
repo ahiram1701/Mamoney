@@ -108,6 +108,8 @@ def read_settings(session: SessionDep) -> dict[str, Any]:
         "projection_annual_return_pct": get_setting(session, "projection_annual_return_pct"),
         "pin_enabled": bool(get_setting(session, "pin_hash")),
         "auto_update_check": bool(get_setting(session, "auto_update_check")),
+        "alerts_enabled": bool(get_setting(session, "alerts_enabled")),
+        "alert_days": int(get_setting(session, "alert_days")),
         "data_dir": str(get_config().data_dir),
         "version": __version__,
     }
@@ -125,6 +127,10 @@ def update_settings(data: SettingsUpdate, session: SessionDep) -> dict[str, Any]
         set_setting(session, "projection_annual_return_pct", data.projection_annual_return_pct)
     if data.auto_update_check is not None:
         set_setting(session, "auto_update_check", data.auto_update_check)
+    if data.alerts_enabled is not None:
+        set_setting(session, "alerts_enabled", data.alerts_enabled)
+    if data.alert_days is not None:
+        set_setting(session, "alert_days", data.alert_days)
     return read_settings(session)
 
 
@@ -185,6 +191,8 @@ def export_json(session: SessionDep) -> dict[str, Any]:
                 "allowed_logins",
                 "projection_annual_return_pct",
                 "auto_update_check",
+                "alerts_enabled",
+                "alert_days",
             )
         },
     }
@@ -213,3 +221,10 @@ def import_json(payload: dict[str, Any], session: SessionDep) -> dict[str, int]:
         set_setting(session, key, value)
     session.commit()
     return counts
+
+
+@router.get("/alerts")
+def list_alerts(session: SessionDep) -> list[dict[str, Any]]:
+    from mamoney.services.alerts import build_alerts
+
+    return build_alerts(session)

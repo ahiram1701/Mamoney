@@ -12,6 +12,7 @@ from mamoney.models import (
     AssetValuation,
     ExpensePayment,
     FixedExpense,
+    Goal,
     IncomeEntry,
     IncomeSource,
     Liquidity,
@@ -509,3 +510,72 @@ def spending_by_month(snap: Snapshot, months: int = 6) -> list[Row]:
             }
         )
     return result
+
+
+def _months_between(start: date, end: date) -> float:
+    return (end - start).days / 30.4375
+
+
+def goal_progress(snap: Snapshot, goal: Goal, monthly_savings: float) -> Row:
+    """Avance de una meta.
+
+    El avance es el valor actual del activo ligado (p. ej. la cuenta del fondo de emergencia) o
+    el monto capturado a mano. El ritmo se estima con lo que creció ese activo en los últimos
+    6 meses; sin activo, con el ahorro mensual (flujo libre).
+    """
+    asset = next((a for a in snap.assets if a.id == goal.asset_id), None) if goal.asset_id else None
+    if asset is not None:
+        current = abs(snap.value_at(asset, snap.today) or 0.0)
+        y, m = add_months(snap.today.year, snap.today.month, -6)
+        past = snap.value_at(asset, clamp_day(y, m, snap.today.day))
+        first = snap.valuations.get(asset.id or -1, [None])[0]
+        if past is not None and first is not None:
+            span = max(
+                _months_between(max(first.date, clamp_day(y, m, snap.today.day)), snap.today), 1
+            )
+            pace = (current - abs(past)) / span
+        else:
+            pace = 0.0
+    else:
+        current = goal.manual_amount
+        pace = monthly_savings
+    remaining = max(goal.target_amount - current, 0.0)
+    pct = min(current / goal.target_amount * 100, 100) if goal.target_amount else 0.0
+
+    months_left = monthly_needed = None
+    if goal.target_date:
+        months_left = max(_months_between(snap.today, goal.target_date), 0.0)
+        monthly_needed = remaining / months_left if months_left >= 1 else remaining
+
+    eta = None
+    if remaining == 0:
+        status = "done"
+    elif pace > 0:
+        months_to_goal = remaining / pace
+        eta_day = snap.today + timedelta(days=round(months_to_goal * 30.4375))
+        eta = eta_day.isoformat()
+        if goal.target_date:
+            status = "on_track" if eta_day <= goal.target_date else "behind"
+        else:
+            status = "in_progress"
+    else:
+        status = "behind" if goal.target_date else "stalled"
+    if goal.target_date and goal.target_date < snap.today and remaining > 0:
+        status = "overdue"
+
+    return {
+        "id": goal.id,
+        "name": goal.name,
+        "target_amount": _r(goal.target_amount),
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "asset_id": goal.asset_id,
+        "asset_name": asset.name if asset else None,
+        "current": _r(current),
+        "remaining": _r(remaining),
+        "pct": _r(pct),
+        "monthly_pace": _r(pace),
+        "monthly_needed": _r(monthly_needed) if monthly_needed is not None else None,
+        "eta": eta,
+        "status": status,
+        "archived": goal.archived,
+    }

@@ -3,7 +3,7 @@
 import datetime as dt
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, create_model, field_validator
+from pydantic import BaseModel, Field, create_model, field_validator
 from sqlmodel import SQLModel
 
 from mamoney.models import (
@@ -101,6 +101,8 @@ class SettingsUpdate(BaseModel):
     allowed_logins: list[str] | None = None
     projection_annual_return_pct: float | None = None
     auto_update_check: bool | None = None
+    alerts_enabled: bool | None = None
+    alert_days: int | None = Field(default=None, ge=0, le=30)
 
 
 class PinUpdate(BaseModel):

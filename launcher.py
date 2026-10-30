@@ -251,6 +251,30 @@ def run() -> None:
 
     threading.Thread(target=watch_updates, daemon=True, name="update-watch").start()
 
+    def watch_alerts() -> None:
+        """Pagos por vencer, presupuesto excedido y metas atrasadas: un aviso por alerta."""
+        from sqlmodel import Session
+
+        from mamoney.db import get_engine
+        from mamoney.services.alerts import take_new_alerts
+
+        stop.wait(20)  # deja arrancar la app antes del primer aviso
+        while not stop.is_set():
+            try:
+                with Session(get_engine()) as session:
+                    fresh = take_new_alerts(session)
+                if len(fresh) == 1:
+                    icon.notify(f"{fresh[0]['title']}. {fresh[0]['detail']}", APP_NAME)
+                elif fresh:
+                    titles = "; ".join(a["title"] for a in fresh[:3])
+                    more = f" y {len(fresh) - 3} más" if len(fresh) > 3 else ""
+                    icon.notify(f"{len(fresh)} alertas: {titles}{more}", APP_NAME)
+            except Exception:
+                log.exception("No se pudieron revisar las alertas")
+            stop.wait(30 * 60)
+
+    threading.Thread(target=watch_alerts, daemon=True, name="alerts-watch").start()
+
     def on_closing() -> bool:
         if window is not None:
             window.hide()
