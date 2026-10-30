@@ -31,7 +31,8 @@ def build_alerts(session: Session, today: dt.date | None = None) -> list[dict[st
     days = int(get_setting(session, "alert_days") or 3)
     alerts: list[dict[str, Any]] = []
 
-    for item in an.upcoming_payments(snap, days=days, past_days=31):
+    # Vencidos solo de la última semana: si no marcas pagos, no se acumulan avisos viejos.
+    for item in an.upcoming_payments(snap, days=days, past_days=7):
         if item["status"] == "paid":
             continue
         due = dt.date.fromisoformat(str(item["due_date"]))

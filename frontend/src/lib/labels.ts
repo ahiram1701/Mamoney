@@ -77,3 +77,19 @@ export type Frequency = keyof typeof FREQUENCIES;
 export function label(map: Record<string, string>, key: string): string {
   return map[key] ?? key;
 }
+
+export const SPENDING_CATEGORIES = {
+  groceries: "Súper",
+  restaurants: "Restaurantes y comida",
+  transport: "Transporte y gasolina",
+  shopping: "Compras",
+  entertainment: "Entretenimiento",
+  health: "Salud",
+  home: "Hogar",
+  travel: "Viajes",
+  education: "Educación",
+  personal: "Cuidado personal",
+  gifts: "Regalos",
+  services: "Servicios",
+  other: "Otros",
+} as const;

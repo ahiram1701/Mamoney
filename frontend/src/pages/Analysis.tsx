@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { GoalsCard } from "../components/Goals";
 import { usePerformance, useProjection, useSummary } from "../api/hooks";
 import { ChartFrame, DataTable, Legend, TimeLineChart } from "../components/charts/Charts";
 import { SERIES } from "../components/charts/palette";
@@ -89,7 +90,11 @@ export function AnalysisPage() {
           <StatTile
             label="Tasa de ahorro"
             value={pct(s?.savings_rate_pct)}
-            hint="Flujo libre / ingreso"
+            hint={
+              s?.monthly_variable_spending
+                ? `Descuenta ${money(s.monthly_variable_spending)}/mes de gastos variables`
+                : "Solo descuenta gastos fijos: registra tus gastos variables"
+            }
           />
           <StatTile label="Deuda / activos" value={pct(s?.debt_to_assets_pct)} />
           <StatTile
@@ -98,6 +103,10 @@ export function AnalysisPage() {
             hint="Peso de tu principal fuente"
           />
         </div>
+      </div>
+
+      <div className="mt-4">
+        <GoalsCard />
       </div>
 
       <Card
@@ -175,7 +184,7 @@ export function AnalysisPage() {
       <Card
         className="mt-4"
         title="Rendimiento por activo"
-        subtitle="Cambio de valor más ingresos asociados, en MXN"
+        subtitle="Cambio de valor más ingresos asociados, en MXN. En cuentas con posiciones, «Inicial» es lo invertido."
       >
         {perf.length === 0 ? (
           <EmptyState title="Sin datos suficientes">
@@ -201,7 +210,19 @@ export function AnalysisPage() {
                   <tr key={p.id} className="border-b border-line">
                     <td className="py-2 font-medium">{p.name}</td>
                     <td className="tabular py-2 text-ink-3">{shortDate(p.since)}</td>
-                    <td className="tabular py-2 text-right">{money(p.start_value_base)}</td>
+                    <td
+                      className="tabular py-2 text-right"
+                      title={
+                        p.basis === "cost"
+                          ? "Dinero invertido (costo de las posiciones)"
+                          : undefined
+                      }
+                    >
+                      {money(p.start_value_base)}
+                      {p.basis === "cost" && (
+                        <span className="ml-1 text-xs text-ink-3">invertido</span>
+                      )}
+                    </td>
                     <td className="tabular py-2 text-right">{money(p.current_value_base)}</td>
                     <td className="tabular py-2 text-right">{money(p.income_base)}</td>
                     <td

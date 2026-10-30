@@ -6,6 +6,26 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- **Gastos variables y presupuesto** (Gastos → Variables y presupuesto): gastos por categoría,
+  límite mensual por categoría con avance, alerta y proyección al cierre del mes. El flujo libre y
+  la tasa de ahorro ya descuentan tu gasto variable promedio.
+- **Importación de estados de cuenta** OFX y CSV de cualquier banco (incluidos los de columnas
+  Cargo/Abono y coma decimal): vista previa, categoría sugerida que aprende de lo que ya
+  categorizaste, detección de duplicados y opción para tarjetas de crédito.
+- **Metas de ahorro** ligadas a un activo o con monto manual: avance, ahorro mensual necesario,
+  fecha estimada a tu ritmo y estado (a tiempo, atrasada, vencida).
+- **Alertas** en Resumen y en la bandeja: pagos por vencer o vencidos, presupuesto excedido y metas
+  atrasadas; cada una se avisa una sola vez. Se configuran en Ajustes → Alertas.
+- Registro de accesos remotos con la cuenta y el dispositivo de Tailscale.
+
+### Corregido
+
+- Rendimiento por activo: en cuentas con posiciones, el dinero nuevo ya no cuenta como ganancia.
+- La exportación JSON incluye todas las tablas; antes omitía las inversiones.
+- La búsqueda de símbolos muestra solo EE. UU. y cripto en dólares.
+
 ## [0.2.6] - 2026-10-26
 
 ### Añadido

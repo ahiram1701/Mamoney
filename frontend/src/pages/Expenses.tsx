@@ -1,5 +1,6 @@
 import { Check, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   useApiMutation,
@@ -27,6 +28,24 @@ import {
 import { money, shortDate, todayIso } from "../lib/format";
 import { EXPENSE_CATEGORIES, FREQUENCIES, label, type ExpenseCategory } from "../lib/labels";
 import { CurrencySelect } from "./Assets";
+import { VariableSpending } from "./Spending";
+
+export function ExpensesPage() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "variables" ? "variables" : "fixed";
+  const tabs = (
+    <Segmented
+      label="Tipo de gasto"
+      value={tab}
+      onChange={(v) => setParams(v === "variables" ? { tab: "variables" } : {})}
+      options={[
+        { value: "fixed", label: "Fijos" },
+        { value: "variables", label: "Variables y presupuesto" },
+      ]}
+    />
+  );
+  return tab === "variables" ? <VariableSpending tabs={tabs} /> : <FixedExpenses tabs={tabs} />;
+}
 
 const MONTHLY_FACTOR: Record<string, number> = {
   once: 0,
@@ -39,7 +58,7 @@ const MONTHLY_FACTOR: Record<string, number> = {
   annual: 1 / 12,
 };
 
-export function ExpensesPage() {
+function FixedExpenses({ tabs }: { tabs: ReactNode }) {
   const { data: expenses = [] } = useExpenses();
   const { data: byCategory = [] } = useExpensesByCategory();
   const { data: summary } = useSummary();
@@ -55,12 +74,15 @@ export function ExpensesPage() {
   return (
     <>
       <PageHeader
-        title="Gastos fijos"
+        title="Gastos"
         subtitle="Renta, servicios, seguros, suscripciones y cualquier pago recurrente."
         actions={
-          <button className="btn btn-primary" onClick={() => setEditing("new")}>
-            <Plus size={16} /> Nuevo gasto fijo
-          </button>
+          <>
+            {tabs}
+            <button className="btn btn-primary" onClick={() => setEditing("new")}>
+              <Plus size={16} /> Nuevo gasto fijo
+            </button>
+          </>
         }
       />
 

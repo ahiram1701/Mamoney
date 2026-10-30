@@ -25,6 +25,7 @@ export function SettingsPage() {
         <PreferencesCard />
         <BackupCard />
         <UpdatesCard />
+        <AlertsCard />
       </div>
     </>
   );
@@ -404,6 +405,47 @@ function UpdatesCard() {
           Buscar automáticamente cada 6 h
         </label>
       </div>
+      <ErrorText error={save.error} />
+    </Card>
+  );
+}
+
+function AlertsCard() {
+  const { data: settings } = useSettings();
+  const [days, setDays] = useState<string | null>(null);
+  const save = useApiMutation("PATCH", "/api/settings");
+  const value = days ?? String(settings?.alert_days ?? 3);
+  return (
+    <Card
+      title="Alertas"
+      subtitle="Pagos por vencer o vencidos, presupuesto excedido y metas atrasadas"
+    >
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={settings?.alerts_enabled ?? true}
+          onChange={(e) => save.mutate({ alerts_enabled: e.target.checked })}
+        />
+        Avisarme en el icono de la bandeja (una vez por alerta)
+      </label>
+      <div className="mt-3 flex items-end gap-2">
+        <Field label="Avisar de pagos con anticipación (días)">
+          <input
+            className="input w-24"
+            type="number"
+            min={0}
+            max={30}
+            value={value}
+            onChange={(e) => setDays(e.target.value)}
+          />
+        </Field>
+        <button className="btn" onClick={() => save.mutate({ alert_days: Number(value) })}>
+          Guardar
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-ink-3">
+        En el dashboard las alertas siempre se muestran en Resumen, también desde el teléfono.
+      </p>
       <ErrorText error={save.error} />
     </Card>
   );

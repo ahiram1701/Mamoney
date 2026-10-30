@@ -102,6 +102,7 @@ export interface Summary {
   passive_monthly_income: number;
   income_this_month: number;
   monthly_fixed_expenses: number;
+  monthly_variable_spending: number;
   free_cash_flow: number;
   savings_rate_pct: number | null;
   passive_coverage_pct: number | null;
@@ -151,6 +152,7 @@ export interface Performance {
   gain_base: number;
   total_return_pct: number | null;
   annualized_return_pct: number | null;
+  basis: "cost" | "first_valuation";
 }
 
 export interface FxLatest {
@@ -167,6 +169,8 @@ export interface Settings {
   projection_annual_return_pct: number;
   pin_enabled: boolean;
   auto_update_check: boolean;
+  alerts_enabled: boolean;
+  alert_days: number;
   data_dir: string;
   version: string;
 }
@@ -268,4 +272,94 @@ export interface TradeRow {
   currency: string;
   account: string;
   total: number | null;
+}
+
+export type SpendingCategory =
+  | "groceries"
+  | "restaurants"
+  | "transport"
+  | "shopping"
+  | "entertainment"
+  | "health"
+  | "home"
+  | "travel"
+  | "education"
+  | "personal"
+  | "gifts"
+  | "services"
+  | "other";
+
+export interface SpendingItem {
+  id: number;
+  date: string;
+  amount: number;
+  currency: string;
+  category: SpendingCategory;
+  description: string;
+  payment_asset_id: number | null;
+  notes: string | null;
+  source: "manual" | "import";
+}
+
+export interface BudgetCategoryRow {
+  category: SpendingCategory;
+  spent: number;
+  limit: number | null;
+  used_pct: number | null;
+  projected: number;
+  status: "ok" | "warning" | "over" | "no_budget";
+}
+
+export interface BudgetReport {
+  month: string;
+  categories: BudgetCategoryRow[];
+  spent: number;
+  limit: number | null;
+  used_pct: number | null;
+  days_elapsed: number;
+  days_in_month: number;
+}
+
+export interface ImportPreviewRow {
+  key: string;
+  date: string;
+  description: string;
+  amount: number;
+  kind: "expense" | "income";
+  category: SpendingCategory | null;
+  duplicate: boolean;
+}
+
+export interface ImportPreview {
+  rows: ImportPreviewRow[];
+  count: number;
+  duplicates: number;
+  expenses: number;
+  income: number;
+}
+
+export interface GoalRow {
+  id: number;
+  name: string;
+  target_amount: number;
+  target_date: string | null;
+  asset_id: number | null;
+  asset_name: string | null;
+  current: number;
+  remaining: number;
+  pct: number;
+  monthly_pace: number;
+  monthly_needed: number | null;
+  eta: string | null;
+  status: "done" | "on_track" | "in_progress" | "behind" | "stalled" | "overdue";
+  archived: boolean;
+}
+
+export interface AlertItem {
+  key: string;
+  kind: "payment" | "budget" | "goal";
+  severity: "critical" | "warning";
+  title: string;
+  detail: string;
+  link: string;
 }

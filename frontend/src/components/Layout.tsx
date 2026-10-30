@@ -21,7 +21,7 @@ const NAV = [
   { to: "/patrimonio", label: "Patrimonio", icon: Wallet },
   { to: "/inversiones", label: "Inversiones", icon: LineChart },
   { to: "/ingresos", label: "Ingresos", icon: TrendingUp },
-  { to: "/gastos", label: "Gastos fijos", icon: CalendarClock },
+  { to: "/gastos", label: "Gastos", icon: CalendarClock },
   { to: "/analisis", label: "Análisis", icon: BarChart3 },
   { to: "/ajustes", label: "Ajustes", icon: Settings },
 ];

@@ -1,6 +1,9 @@
 import { AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { AlertsBanner } from "../components/AlertsBanner";
+import { GoalsCard } from "../components/Goals";
+
 import { useNetWorthHistory, useSummary, useUpcoming } from "../api/hooks";
 import { ChartFrame, DataTable, Legend, TimeLineChart } from "../components/charts/Charts";
 import { SERIES } from "../components/charts/palette";
@@ -46,6 +49,7 @@ export function DashboardPage() {
         subtitle={s ? `Valores en ${s.base_currency} al ${shortDate(s.as_of)}` : undefined}
       />
       {s && <MissingRatesBanner currencies={s.missing_rates} />}
+      <AlertsBanner />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
@@ -138,6 +142,10 @@ export function DashboardPage() {
             />
           </dl>
         </Card>
+      </div>
+
+      <div className="mt-4">
+        <GoalsCard compact />
       </div>
 
       <Card

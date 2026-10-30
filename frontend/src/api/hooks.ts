@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./client";
 import type {
+  AlertItem,
+  BudgetReport,
+  GoalRow,
+  SpendingItem,
   Asset,
   AssetRow,
   AuthStatus,
@@ -137,6 +141,31 @@ export const usePositions = () =>
 
 export const useTrades = () =>
   useQuery({ queryKey: ["trades"], queryFn: get<TradeRow[]>("/api/portfolio/trades") });
+
+export const useSpending = (month: string) =>
+  useQuery({
+    queryKey: ["spending", month],
+    queryFn: get<SpendingItem[]>(`/api/spending?month=${month}`),
+  });
+
+export const useBudgetReport = (month: string) =>
+  useQuery({
+    queryKey: ["budget-report", month],
+    queryFn: get<BudgetReport>(`/api/analytics/budget?month=${month}`),
+  });
+
+export const useBudget = () =>
+  useQuery({ queryKey: ["budget"], queryFn: get<Record<string, number>>("/api/budget") });
+
+export const useGoals = () =>
+  useQuery({ queryKey: ["goals"], queryFn: get<GoalRow[]>("/api/goals") });
+
+export const useAlerts = () =>
+  useQuery({
+    queryKey: ["alerts"],
+    queryFn: get<AlertItem[]>("/api/alerts"),
+    refetchInterval: 10 * 60_000,
+  });
 
 export const useSettings = () =>
   useQuery({ queryKey: ["settings"], queryFn: get<Settings>("/api/settings") });
