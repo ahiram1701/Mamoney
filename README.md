@@ -52,16 +52,17 @@ y se centran en gastos del día a día. Mamoney está pensado para otra pregunta
 
 | Módulo | Qué hace |
 |---|---|
-| **Resumen** | Patrimonio neto, ingreso mensual, gastos fijos, flujo libre, tasa de ahorro, evolución a 24 meses y próximos pagos. |
+| **Resumen** | Patrimonio neto, ingreso mensual, gastos fijos, flujo libre, tasa de ahorro, evolución a 24 meses, próximos pagos, **alertas** y avance de tus metas. |
 | **Patrimonio** | Activos y deudas con historial de valuaciones, variación, liquidez y distribución por tipo, moneda y liquidez. |
+| **Inversiones** | Acciones y ETFs de EE. UU. y cripto con **precios de mercado automáticos** (Yahoo Finance, respaldo Coinbase): compras, ventas o solo tu saldo; costo promedio, ganancia realizada y no realizada, distribución y valuación automática de la cuenta. |
 | **Ingresos** | Fuentes activas y pasivas, cobros con impuestos retenidos, ingreso neto por mes apilado por fuente, esperado vs. real. |
-| **Gastos fijos** | Pagos recurrentes de cualquier frecuencia (semanal a anual, incluido bimestral y quincenal), calendario de vencimientos, marcar como pagado, atrasos. |
-| **Análisis** | Cobertura de gastos con ingreso pasivo, colchón de liquidez en meses, deuda/activos, concentración de ingresos, rendimiento por activo y proyección de patrimonio con interés compuesto. |
-| **Ajustes** | Tipos de cambio (automáticos y manuales), usuarios de Tailscale permitidos, PIN, respaldo `.db`, exportación e importación JSON. |
+| **Gastos** | **Fijos:** pagos recurrentes de cualquier frecuencia (semanal a anual, incluido bimestral y quincenal), calendario de vencimientos, marcar como pagado. **Variables y presupuesto:** gastos por categoría, límite mensual con proyección al cierre e **importación de estados de cuenta** CSV/OFX con categorías sugeridas y sin duplicados. |
+| **Análisis** | Cobertura de gastos con ingreso pasivo, colchón de liquidez en meses, tasa de ahorro real, deuda/activos, concentración de ingresos, **metas de ahorro**, rendimiento por activo y proyección de patrimonio con interés compuesto. |
+| **Ajustes** | Tipos de cambio (automáticos y manuales), **publicar en Tailscale con un clic** (con código QR), usuarios permitidos, PIN, alertas, actualizaciones, respaldo `.db` y exportación/importación JSON. |
 
 Además: modo claro y oscuro, diseño responsive, vista de tabla accesible para cada gráfica,
-paleta validada para daltonismo, respaldo con un clic desde el icono de la bandeja y
-actualizaciones verificadas con un clic.
+paleta validada para daltonismo, respaldo con un clic desde el icono de la bandeja,
+alertas en la bandeja y actualizaciones verificadas con un clic.
 
 ## Capturas
 
@@ -149,8 +150,11 @@ El registro de la última instalación queda en `%APPDATA%\Mamoney\updates\updat
 
 ## Privacidad y seguridad
 
-- **Local primero**: SQLite en tu equipo; nada se sincroniza con servicios externos.
-  La única llamada saliente es a [Frankfurter](https://frankfurter.dev) para tipos de cambio y solo envía códigos de moneda.
+- **Local primero**: SQLite en tu equipo; nada se sincroniza con servicios externos. Las únicas
+  llamadas salientes son de solo lectura y **nunca envían tus montos ni tus datos**:
+  - [Frankfurter](https://frankfurter.dev) (BCE): tipos de cambio; envía códigos de moneda.
+  - Yahoo Finance y Coinbase: precios de acciones, ETFs y cripto; envían el símbolo (p. ej. `VOO`).
+  - GitHub Releases: buscar actualizaciones (se puede desactivar en Ajustes).
 - **Tres capas de acceso remoto**: red privada de Tailscale → identidad verificada
   (`Tailscale-User-Login`) contra tu lista de usuarios → PIN opcional con sesión firmada (HMAC, 30 días).
 - **La ventana local** se reconoce por conexión loopback, `Host` local y ausencia de cabeceras de proxy, lo
@@ -172,6 +176,8 @@ flowchart LR
     end
     Phone["Teléfono / laptop<br/>en tu tailnet"] -- "WireGuard" --> TS
     S -. "tipos de cambio" .-> FX["Frankfurter (BCE)"]
+    S -. "precios" .-> MK["Yahoo Finance / Coinbase"]
+    S -. "actualizaciones" .-> GH["GitHub Releases"]
 ```
 
 | Capa | Tecnología |
@@ -184,8 +190,8 @@ flowchart LR
 ```
 Mamoney/
 ├── backend/mamoney/        # API, modelos, migraciones y servicios de dominio
-│   ├── routers/            # assets, income, expenses, fx, analytics, system
-│   ├── services/           # scheduling (recurrencias), fx, analytics
+│   ├── routers/            # patrimonio, ingresos, gastos, inversiones, metas, importación, sistema…
+│   ├── services/           # analytics, portfolio, quotes, importer, alerts, updater, tailscale, fx…
 │   └── migrations/         # Alembic
 ├── backend/tests/          # pytest
 ├── frontend/src/           # dashboard React

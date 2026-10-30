@@ -59,6 +59,12 @@ Su código fuente está disponible en <https://github.com/moses-palmer/pystray>.
 
 ## Servicios externos
 
-- **Frankfurter** (<https://frankfurter.dev>): API pública de tipos de cambio del
-  Banco Central Europeo. Mamoney solo envía la lista de monedas a consultar; nunca
-  envía tus datos financieros.
+Mamoney solo hace consultas de lectura y **nunca envía tus montos ni tus datos financieros**:
+
+- **Frankfurter** (<https://frankfurter.dev>): tipos de cambio del Banco Central Europeo. Envía los
+  códigos de moneda a consultar.
+- **Yahoo Finance** (endpoint público de cotizaciones) y **Coinbase** (precio spot): precios de
+  acciones, ETFs y cripto. Envían el símbolo consultado (p. ej. `VOO`, `BTC-USD`). Mamoney no está
+  afiliado a estos servicios y los precios pueden tener retraso.
+- **GitHub Releases** (<https://github.com/ahiram1701/Mamoney/releases>): búsqueda y descarga de
+  actualizaciones. Se puede desactivar en Ajustes → Actualizaciones.
