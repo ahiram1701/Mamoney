@@ -5,4 +5,4 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("mamoney")
 except PackageNotFoundError:  # ejecutando desde el código sin instalar (p. ej. PyInstaller)
-    __version__ = "0.3.0"
+    __version__ = "0.3.1"

@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-30
+
 ### Corregido
 
 - Tras actualizar, Mamoney podía quedarse sin abrir: la ventana (WebView2) se colgaba al arrancar
@@ -135,7 +137,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ahiram1701/Mamoney/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ahiram1701/Mamoney/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/ahiram1701/Mamoney/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/ahiram1701/Mamoney/compare/v0.2.4...v0.2.5
