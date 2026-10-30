@@ -57,6 +57,8 @@ ignore = ["B008", "RUF001", "RUF002", "RUF003"]
 [tool.ruff.lint.per-file-ignores]
 # El launcher desbloquea sus archivos antes de importar pywebview/pythonnet.
 "launcher.py" = ["E402"]
+# Contiene el script de PowerShell del actualizador como texto.
+"backend/mamoney/services/updater.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

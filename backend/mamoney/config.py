@@ -47,6 +47,11 @@ class Config:
     def updates_dir(self) -> Path:
         return self.data_dir / "updates"
 
+    @property
+    def webview_dir(self) -> Path:
+        """Datos de WebView2 propios de Mamoney (no compartidos con otras apps de pywebview)."""
+        return self.data_dir / "webview"
+
 
 @lru_cache
 def get_config() -> Config:

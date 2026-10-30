@@ -289,7 +289,7 @@ def run() -> None:
         if window is None:
             raise RuntimeError("pywebview no devolvió una ventana")
         window.events.closing += on_closing
-        webview.start(private_mode=False)
+        webview.start(private_mode=False, storage_path=str(cfg.webview_dir))
     except Exception:
         # Sin ventana nativa (p. ej. falta WebView2): Mamoney sigue en la bandeja y se usa
         # el navegador predeterminado.

@@ -263,7 +263,9 @@ param(
     [string]$Source,
     [string]$Target,
     [string]$ExeName,
-    [string]$Log
+    [string]$Log,
+    [int]$Port = 8765,
+    [string]$WebviewDir = ""
 )
 $ErrorActionPreference = "Stop"
 function Write-Log([string]$Message) {
@@ -273,6 +275,51 @@ function Retry([scriptblock]$Action) {
     for ($i = 1; $i -le 10; $i++) {
         try { & $Action; return } catch { if ($i -eq 10) { throw }; Start-Sleep -Seconds 1 }
     }
+}
+function Get-WebviewProcesses {
+    if (-not $WebviewDir) { return @() }
+    @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -and $_.CommandLine.Contains($WebviewDir) })
+}
+# El WebView2 de la versión anterior puede seguir cerrándose; abrir la nueva encima de su
+# carpeta de datos puede dejar la ventana colgada.
+function Wait-Webview {
+    $deadline = (Get-Date).AddSeconds(20)
+    while ((Get-WebviewProcesses).Count -gt 0 -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+    $left = Get-WebviewProcesses
+    if ($left.Count -gt 0) {
+        Write-Log "Cerrando $($left.Count) procesos de WebView2 que quedaron abiertos"
+        $left | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 1
+    }
+}
+function Test-Healthy {
+    try {
+        $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 "http://127.0.0.1:$Port/api/health"
+        return $r.StatusCode -eq 200
+    } catch { return $false }
+}
+# Abre Mamoney y comprueba que responda de forma sostenida; si se queda colgado, lo
+# cierra y lo vuelve a abrir una vez.
+function Start-Mamoney {
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        Wait-Webview
+        $proc = Start-Process -FilePath (Join-Path $Target $ExeName) -WorkingDirectory $Target -PassThru
+        $healthy = 0
+        $deadline = (Get-Date).AddSeconds(45)
+        while ((Get-Date) -lt $deadline -and -not $proc.HasExited) {
+            Start-Sleep -Seconds 3
+            if (Test-Healthy) { $healthy++ } else { $healthy = 0 }
+            if ($healthy -ge 5) {
+                Write-Log "Mamoney responde (intento $attempt)"
+                return
+            }
+        }
+        Write-Log "Mamoney no respondió tras abrirlo (intento $attempt); se reinicia"
+        if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 2
+    }
+    Write-Log "Mamoney no respondió tras dos intentos; ábrelo manualmente"
 }
 
 Write-Log "Esperando a que Mamoney (PID $AppPid) termine"
@@ -293,7 +340,6 @@ try {
     Retry { Move-Item -LiteralPath $Target -Destination $backup }
     Copy-Item -LiteralPath $Source -Destination $Target -Recurse
     Write-Log "Archivos reemplazados en $Target"
-    Start-Process -FilePath (Join-Path $Target $ExeName) -WorkingDirectory $Target
     Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Source -Recurse -Force -ErrorAction SilentlyContinue
     Write-Log "Actualización completada"
@@ -305,9 +351,10 @@ try {
         }
         Move-Item -LiteralPath $backup -Destination $Target
     }
-    Start-Process -FilePath (Join-Path $Target $ExeName) -WorkingDirectory $Target
+    Start-Mamoney
     exit 1
 }
+Start-Mamoney
 """
 
 
@@ -320,6 +367,7 @@ def write_updater_script(directory: Path) -> Path:
 
 
 def updater_command(script: Path, source: Path, target: Path, log_file: Path) -> list[str]:
+    cfg = get_config()
     return [
         "powershell.exe",
         "-NoProfile",
@@ -337,6 +385,10 @@ def updater_command(script: Path, source: Path, target: Path, log_file: Path) ->
         EXE_NAME,
         "-Log",
         str(log_file),
+        "-Port",
+        str(cfg.port),
+        "-WebviewDir",
+        str(cfg.webview_dir),
     ]
 
 

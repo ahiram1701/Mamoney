@@ -202,3 +202,19 @@ def test_status_without_auto_check_does_not_call_github(
     data = client.get("/api/updates").json()
     assert data["available"] is False
     assert data["latest"] is None
+
+
+def test_updater_command_passes_port_and_dedicated_webview_dir(tmp_path: Path) -> None:
+    cmd = updater.updater_command(
+        tmp_path / "s.ps1", tmp_path / "src", tmp_path / "dst", tmp_path / "l"
+    )
+    cfg = updater.get_config()
+    assert cmd[cmd.index("-Port") + 1] == str(cfg.port)
+    assert cmd[cmd.index("-WebviewDir") + 1] == str(cfg.webview_dir)
+    assert cfg.webview_dir.parent == cfg.data_dir  # no la carpeta compartida de pywebview
+
+
+def test_updater_script_waits_for_webview_and_checks_health() -> None:
+    script = updater.UPDATER_SCRIPT
+    assert "Wait-Webview" in script and "/api/health" in script
+    assert script.count("Start-Mamoney") >= 3  # definición + éxito + restauración

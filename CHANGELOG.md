@@ -6,6 +6,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- Tras actualizar, Mamoney podía quedarse sin abrir: la ventana (WebView2) se colgaba al arrancar
+  mientras el WebView2 de la versión anterior seguía cerrándose, y con ella el servidor. Ahora
+  Mamoney usa su propia carpeta de WebView2, el actualizador espera a que la anterior se libere y
+  comprueba que la versión nueva responda; si no, la reinicia una vez.
+
 ## [0.3.0] - 2026-10-30
 
 ### Añadido
