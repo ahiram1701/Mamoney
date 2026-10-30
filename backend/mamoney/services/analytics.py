@@ -15,6 +15,7 @@ from mamoney.models import (
     IncomeEntry,
     IncomeSource,
     Liquidity,
+    Spending,
 )
 from mamoney.services.fx import FxTable, MissingRateError
 from mamoney.services.scheduling import (
@@ -43,6 +44,7 @@ class Snapshot:
     fx: FxTable
     today: date
     missing_rates: set[str] = field(default_factory=set)
+    spendings: list[Spending] = field(default_factory=list)
 
     @classmethod
     def load(cls, session: Session, today: date | None = None) -> "Snapshot":
@@ -58,6 +60,7 @@ class Snapshot:
             payments=list(session.exec(select(ExpensePayment)).all()),
             fx=FxTable.load(session),
             today=today or date.today(),
+            spendings=list(session.exec(select(Spending)).all()),
         )
 
     def to_base(self, amount: float, currency: str, on: date) -> float:
@@ -303,7 +306,8 @@ def summary(snap: Snapshot) -> Row:
 
     monthly_income = sum(best(r) for r in sources if r["active"])
     passive_income = sum(best(r) for r in sources if r["active"] and r["is_passive"])
-    free_cash_flow = monthly_income - fixed
+    variable = monthly_variable_spending(snap)
+    free_cash_flow = monthly_income - fixed - variable
 
     liquid = 0.0
     for asset in snap.assets:
@@ -334,6 +338,7 @@ def summary(snap: Snapshot) -> Row:
         "passive_monthly_income": _r(passive_income),
         "income_this_month": this_month,
         "monthly_fixed_expenses": _r(fixed),
+        "monthly_variable_spending": _r(variable),
         "free_cash_flow": _r(free_cash_flow),
         "savings_rate_pct": ratio(free_cash_flow, monthly_income, 100),
         "passive_coverage_pct": ratio(passive_income, fixed, 100),
@@ -360,8 +365,15 @@ def projection(
     return points
 
 
-def asset_performance(snap: Snapshot) -> list[Row]:
-    """Rendimiento por activo: cambio de valor + ingresos asociados desde la primera valuación."""
+def asset_performance(
+    snap: Snapshot, invested: dict[int, tuple[float, float]] | None = None
+) -> list[Row]:
+    """Rendimiento por activo: cambio de valor + ingresos asociados desde la primera valuación.
+
+    `invested` da, para cuentas con posiciones, (costo de lo que sigue en cartera, ganancia
+    realizada) en moneda base. Ahí el punto de partida es el dinero invertido y no la primera
+    valuación, para que las aportaciones nuevas no cuenten como ganancia.
+    """
     income_by_asset: dict[int, float] = defaultdict(float)
     sources = {s.id: s for s in snap.sources}
     rows = []
@@ -376,20 +388,28 @@ def asset_performance(snap: Snapshot) -> list[Row]:
                 income_by_asset[asset.id or -1] += snap.to_base(
                     entry.gross_amount - entry.tax_withheld, source.currency, entry.date
                 )
-        start_base = snap.to_base(first.value, asset.currency, first.date)
         end_base = snap.to_base(last.value, asset.currency, snap.today)
         income = income_by_asset[asset.id or -1]
-        gain = end_base - start_base + income
         days = (snap.today - first.date).days
+        position_based = invested is not None and asset.id in invested
+        if position_based:
+            cost, realized = invested[asset.id]  # type: ignore[index]
+            start_base = cost
+            gain = end_base - cost + realized + income
+        else:
+            start_base = snap.to_base(first.value, asset.currency, first.date)
+            gain = end_base - start_base + income
         total_return = gain / start_base if start_base else None
         annualized = None
-        if total_return is not None and days >= 30 and 1 + total_return > 0:
+        # Con aportaciones en distintas fechas, anualizar con una sola fecha de inicio engañaría.
+        if not position_based and total_return is not None and days >= 30 and 1 + total_return > 0:
             annualized = ((1 + total_return) ** (365 / days) - 1) * 100
         rows.append(
             {
                 "id": asset.id,
                 "name": asset.name,
                 "since": first.date.isoformat(),
+                "basis": "cost" if position_based else "first_valuation",
                 "start_value_base": _r(start_base),
                 "current_value_base": _r(end_base),
                 "income_base": _r(income),
@@ -400,3 +420,92 @@ def asset_performance(snap: Snapshot) -> list[Row]:
         )
     rows.sort(key=lambda r: -float(r["gain_base"] or 0))
     return rows
+
+
+def spending_totals(snap: Snapshot, year: int, month: int) -> dict[str, float]:
+    """Gasto variable por categoría en un mes, en moneda base."""
+    totals: dict[str, float] = defaultdict(float)
+    for s in snap.spendings:
+        if s.date.year == year and s.date.month == month:
+            totals[s.category] += snap.to_base(s.amount, s.currency, s.date)
+    return totals
+
+
+def monthly_variable_spending(snap: Snapshot, months: int = 3) -> float:
+    """Promedio mensual de gasto variable de los últimos `months` meses completos.
+
+    Si aún no hay un mes completo con datos, usa el mes en curso proyectado a 30 días.
+    """
+    if not snap.spendings:
+        return 0.0
+    first = min(s.date for s in snap.spendings)
+    complete = [
+        key
+        for key in last_n_months(snap.today, months + 1)[:-1]  # sin el mes en curso
+        if date(key[0], key[1], 1) >= date(first.year, first.month, 1)
+    ]
+    if complete:
+        total = sum(sum(spending_totals(snap, y, m).values()) for y, m in complete)
+        return total / len(complete)
+    current = sum(spending_totals(snap, snap.today.year, snap.today.month).values())
+    return current / max(snap.today.day, 1) * 30
+
+
+def budget_report(snap: Snapshot, limits: dict[str, float], year: int, month: int) -> Row:
+    """Gasto real contra presupuesto por categoría, con proyección al cierre del mes."""
+    totals = spending_totals(snap, year, month)
+    last_day = clamp_day(year, month, 31).day
+    is_current = (year, month) == (snap.today.year, snap.today.month)
+    elapsed = snap.today.day if is_current else last_day
+    categories = sorted(set(totals) | {k for k, v in limits.items() if v > 0})
+    rows: list[Row] = []
+    for cat in categories:
+        spent = totals.get(cat, 0.0)
+        limit = limits.get(cat) or 0.0
+        projected = spent / elapsed * last_day if is_current and elapsed else spent
+        rows.append(
+            {
+                "category": cat,
+                "spent": _r(spent),
+                "limit": _r(limit) if limit else None,
+                "used_pct": _r(spent / limit * 100) if limit else None,
+                "projected": _r(projected),
+                "status": _budget_status(spent, projected, limit),
+            }
+        )
+    rows.sort(key=lambda r: -float(r["spent"]))
+    total_spent = sum(totals.values())
+    total_limit = sum(v for v in limits.values() if v)
+    return {
+        "month": f"{year:04d}-{month:02d}",
+        "categories": rows,
+        "spent": _r(total_spent),
+        "limit": _r(total_limit) if total_limit else None,
+        "used_pct": _r(total_spent / total_limit * 100) if total_limit else None,
+        "days_elapsed": elapsed,
+        "days_in_month": last_day,
+    }
+
+
+def _budget_status(spent: float, projected: float, limit: float) -> str:
+    if not limit:
+        return "no_budget"
+    if spent > limit:
+        return "over"
+    if projected > limit or spent >= limit * 0.8:
+        return "warning"
+    return "ok"
+
+
+def spending_by_month(snap: Snapshot, months: int = 6) -> list[Row]:
+    result = []
+    for year, month in last_n_months(snap.today, months):
+        totals = spending_totals(snap, year, month)
+        result.append(
+            {
+                "month": f"{year:04d}-{month:02d}",
+                "total": _r(sum(totals.values())),
+                "by_category": {k: _r(v) for k, v in totals.items()},
+            }
+        )
+    return result

@@ -16,11 +16,17 @@ from mamoney.config import get_config
 from mamoney.models import (
     Asset,
     AssetValuation,
+    Budget,
     ExpensePayment,
     FixedExpense,
     FxRate,
+    Goal,
     IncomeEntry,
     IncomeSource,
+    Security,
+    SecurityPrice,
+    Spending,
+    Trade,
 )
 from mamoney.routers.common import SessionDep
 from mamoney.schemas import PinLogin, PinUpdate, SettingsUpdate
@@ -46,6 +52,12 @@ EXPORT_TABLES: list[type[SQLModel]] = [
     FixedExpense,
     ExpensePayment,
     FxRate,
+    Security,
+    SecurityPrice,
+    Trade,
+    Spending,
+    Budget,
+    Goal,
 ]
 
 

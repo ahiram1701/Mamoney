@@ -9,6 +9,8 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -167,3 +169,29 @@ def unpublish() -> TailscaleStatus:
     if result.returncode != 0 and "not found" not in (result.stderr + result.stdout).lower():
         raise TailscaleError((result.stderr or result.stdout).strip() or "No se pudo desactivar")
     return get_status()
+
+
+_devices: dict[str, str] = {}
+_devices_at = 0.0
+_devices_lock = threading.Lock()
+DEVICES_TTL = 300
+
+
+def device_name(ip: str | None) -> str | None:
+    """Nombre del dispositivo de la tailnet con esa IP (caché de 5 min; None si no se sabe)."""
+    global _devices_at
+    if not ip:
+        return None
+    with _devices_lock:
+        if time.monotonic() - _devices_at > DEVICES_TTL:
+            _devices_at = time.monotonic()
+            try:
+                data = json.loads(_run(["status", "--json"], timeout=5).stdout or "{}")
+                peers = [data.get("Self") or {}, *(data.get("Peer") or {}).values()]
+                _devices.clear()
+                for peer in peers:
+                    for addr in peer.get("TailscaleIPs") or []:
+                        _devices[addr] = str(peer.get("HostName") or peer.get("DNSName") or addr)
+            except (TailscaleError, subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+                pass
+        return _devices.get(ip)

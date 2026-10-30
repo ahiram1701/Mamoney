@@ -249,11 +249,11 @@ GitHub Actions compila, prueba y empaqueta, y publica el `.zip` con su checksum 
 
 ## Roadmap
 
+- [x] Cotizaciones automáticas de acciones, ETFs y cripto (Inversiones)
+- [x] Saldos de posiciones sin registrar cada operación
 - [ ] Importación de estados de cuenta CSV/OFX
-- [ ] Cotizaciones automáticas de acciones, ETFs y cripto
 - [ ] Metas de ahorro y alertas de vencimientos
 - [ ] Presupuesto de gastos variables
-- [ ] Instalador MSI firmado
 
 ## Licencia
 

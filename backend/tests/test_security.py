@@ -64,3 +64,23 @@ def test_pin_hash_and_tokens() -> None:
     assert not valid_session_token("otro", token)
     assert not valid_session_token("s3cret", make_session_token("s3cret", ttl=-1))
     assert not valid_session_token("s3cret", "basura")
+
+
+def test_remote_access_is_logged_with_device(monkeypatch, caplog) -> None:  # type: ignore[no-untyped-def]
+    import logging
+
+    from mamoney.services import tailscale
+
+    monkeypatch.setattr(tailscale, "device_name", lambda ip: "iphone-11-pro" if ip else None)
+    headers = {"Tailscale-User-Login": "yo@example.com", "X-Forwarded-For": "100.125.93.102"}
+    with (
+        caplog.at_level(logging.INFO, logger="mamoney"),
+        TestClient(
+            app, base_url="https://pc.tailnet.ts.net", client=("127.0.0.1", 1), headers=headers
+        ) as c,
+    ):
+        c.get("/api/auth/status")
+    assert any(
+        "yo@example.com desde iphone-11-pro (100.125.93.102) abrió Mamoney" in r.message
+        for r in caplog.records
+    )

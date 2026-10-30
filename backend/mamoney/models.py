@@ -229,3 +229,62 @@ class Trade(TradeBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     asset_id: int = Field(foreign_key="asset.id", index=True, ondelete="CASCADE")
     security_id: int = Field(foreign_key="security.id", index=True, ondelete="RESTRICT")
+
+
+class SpendingCategory(StrEnum):
+    groceries = "groceries"
+    restaurants = "restaurants"
+    transport = "transport"
+    shopping = "shopping"
+    entertainment = "entertainment"
+    health = "health"
+    home = "home"
+    travel = "travel"
+    education = "education"
+    personal = "personal"
+    gifts = "gifts"
+    services = "services"
+    other = "other"
+
+
+class SpendingBase(SQLModel):
+    """Gasto variable (súper, gasolina, restaurantes…), capturado o importado."""
+
+    date: dt.date = Field(index=True)
+    amount: float = Field(gt=0)
+    currency: str = Field(default="MXN", min_length=3, max_length=8)
+    category: SpendingCategory = SpendingCategory.other
+    description: str = Field(min_length=1, max_length=200)
+    payment_asset_id: int | None = Field(default=None, foreign_key="asset.id", ondelete="SET NULL")
+    notes: str | None = None
+
+
+class Spending(SpendingBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    source: str = Field(default="manual", max_length=16)  # manual | import
+    # Huella del movimiento importado, para no duplicarlo al importar el mismo archivo.
+    import_key: str | None = Field(default=None, index=True, max_length=64)
+    created_at: dt.datetime = Field(default_factory=_now)
+
+
+class Budget(SQLModel, table=True):
+    """Límite mensual por categoría de gasto variable, en moneda base."""
+
+    category: SpendingCategory = Field(primary_key=True)
+    monthly_limit: float = Field(ge=0)
+
+
+class GoalBase(SQLModel):
+    name: str = Field(min_length=1, max_length=120)
+    target_amount: float = Field(gt=0)
+    target_date: dt.date | None = None
+    # Si se liga a un activo, el avance es su valor actual; si no, se captura a mano.
+    asset_id: int | None = Field(default=None, foreign_key="asset.id", ondelete="SET NULL")
+    manual_amount: float = Field(default=0, ge=0)
+    archived: bool = False
+    notes: str | None = None
+
+
+class Goal(GoalBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: dt.datetime = Field(default_factory=_now)

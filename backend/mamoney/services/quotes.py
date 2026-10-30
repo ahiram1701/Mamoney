@@ -128,10 +128,11 @@ def fetch_history(
 
 
 def search(query: str, client: httpx.Client | None = None) -> list[dict[str, Any]]:
-    """Busca acciones, ETFs, fondos y cripto por nombre o símbolo."""
+    """Busca acciones, ETFs y fondos de EE. UU. y cripto en dólares, por nombre o símbolo."""
     http, own = _client(client)
     try:
-        resp = http.get(YAHOO_SEARCH, params={"q": query, "quotesCount": 8, "newsCount": 0})
+        # Se piden más resultados porque luego se descartan los de otros mercados.
+        resp = http.get(YAHOO_SEARCH, params={"q": query, "quotesCount": 20, "newsCount": 0})
         resp.raise_for_status()
         quotes = resp.json().get("quotes") or []
     finally:
@@ -140,7 +141,8 @@ def search(query: str, client: httpx.Client | None = None) -> list[dict[str, Any
     results = []
     for q in quotes:
         kind = KIND_BY_YAHOO_TYPE.get(str(q.get("quoteType")))
-        if kind is None or not q.get("symbol"):
+        symbol = str(q.get("symbol") or "")
+        if kind is None or not symbol or not is_supported_market(symbol, kind):
             continue
         results.append(
             {
@@ -150,4 +152,12 @@ def search(query: str, client: httpx.Client | None = None) -> list[dict[str, Any
                 "exchange": q.get("exchDisp") or q.get("exchange"),
             }
         )
-    return results
+    return results[:8]
+
+
+def is_supported_market(symbol: str, kind: SecurityKind) -> bool:
+    """EE. UU. no lleva sufijo de bolsa (`VFV.TO`, `VUAA.L`, `WALMEX.MX` son de otros
+    mercados); en cripto solo el par en dólares (`BTC-USD`, no `BTC-EUR`)."""
+    if kind == SecurityKind.crypto:
+        return symbol.upper().endswith("-USD")
+    return "." not in symbol

@@ -22,11 +22,12 @@ from mamoney.routers import (
     fx,
     income,
     portfolio,
+    spending,
     system,
     tailscale,
     updates,
 )
-from mamoney.security import PUBLIC_PATHS, evaluate
+from mamoney.security import IDENTITY_HEADER, PUBLIC_PATHS, evaluate, is_local_request
 from mamoney.services import updater
 from mamoney.services.fx import refresh_rates
 from mamoney.settings_store import get_setting
@@ -102,6 +103,22 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             await task
 
 
+async def _log_remote(request: Request, identity: str | None, what: str) -> None:
+    """Registra quién entra por Tailscale: cuenta y dispositivo (la IP sale de X-Forwarded-For)."""
+    from mamoney.services.tailscale import device_name
+
+    ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or None
+    device = await asyncio.to_thread(device_name, ip)
+    log.info(
+        "Acceso remoto: %s desde %s (%s) %s %s",
+        identity or "sin identidad",
+        device or "dispositivo desconocido",
+        ip or "sin IP",
+        what,
+        request.url.path,
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Mamoney",
@@ -116,17 +133,20 @@ def create_app() -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         path = request.url.path
+        access = None
         if path.startswith("/api") and path not in PUBLIC_PATHS:
             with Session(get_engine()) as session:
                 access = evaluate(request, session)
-            if not access.allowed:
-                return JSONResponse({"detail": access.reason}, status_code=access.status)
         elif not path.startswith("/api"):
             # La interfaz no contiene datos, pero tampoco se sirve a orígenes desconocidos.
             with Session(get_engine()) as session:
                 access = evaluate(request, session, check_pin=False)
-            if not access.allowed:
-                return JSONResponse({"detail": access.reason}, status_code=access.status)
+        if access is not None and not access.allowed:
+            await _log_remote(request, access.identity, f"rechazado ({access.reason})")
+            return JSONResponse({"detail": access.reason}, status_code=access.status)
+        if path == "/api/auth/status" and not is_local_request(request):
+            # Una línea por apertura del dashboard desde otro dispositivo (no por petición).
+            await _log_remote(request, request.headers.get(IDENTITY_HEADER), "abrió Mamoney")
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -140,6 +160,7 @@ def create_app() -> FastAPI:
         fx,
         analytics,
         portfolio,
+        spending,
         system,
         updates,
         tailscale,

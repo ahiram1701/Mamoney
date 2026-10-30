@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Query
+from sqlmodel import col, select
 
+from mamoney.models import Asset
 from mamoney.routers.common import SessionDep
 from mamoney.services import analytics as an
+from mamoney.services.portfolio import positions_report
 from mamoney.settings_store import get_setting
 
 router = APIRouter(prefix="/api/analytics", tags=["análisis"])
@@ -53,7 +56,11 @@ def upcoming(session: SessionDep, days: int = Query(30, ge=1, le=366)) -> list[d
 
 @router.get("/performance")
 def performance(session: SessionDep) -> list[dict[str, object]]:
-    return an.asset_performance(an.Snapshot.load(session))
+    invested: dict[int, tuple[float, float]] = {}
+    for asset in session.exec(select(Asset).where(col(Asset.tracks_positions))).all():
+        report = positions_report(session, asset.id)
+        invested[asset.id] = (report["cost_base"], report["realized_base"])  # type: ignore[index]
+    return an.asset_performance(an.Snapshot.load(session), invested)
 
 
 @router.get("/projection")

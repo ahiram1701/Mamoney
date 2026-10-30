@@ -385,3 +385,29 @@ def test_buy_and_sell_still_require_price(client: TestClient, market) -> None:  
         json={"asset_id": account, "symbol": "AAPL", "date": TODAY.isoformat(), "quantity": 1},
     )
     assert r.status_code == 422
+
+
+def test_performance_does_not_count_new_money_as_gain(client: TestClient, market) -> None:  # type: ignore[no-untyped-def]
+    client.post("/api/fx/rates", json={"currency": "USD", "date": "2020-01-01", "rate_to_base": 1})
+    start = TODAY - dt.timedelta(days=60)
+    market["history"]["AAPL"] = [(start + dt.timedelta(days=i), 200.0) for i in range(61)]
+    account = _account(client)
+    for day, qty in (
+        (start, 10),
+        (TODAY - dt.timedelta(days=10), 10),
+    ):  # segunda compra = dinero nuevo
+        client.post(
+            "/api/portfolio/trades",
+            json={
+                "asset_id": account,
+                "symbol": "AAPL",
+                "date": day.isoformat(),
+                "quantity": qty,
+                "price": 200,
+            },
+        )
+    row = next(r for r in client.get("/api/analytics/performance").json() if r["id"] == account)
+    # Precio sin cambios: no hay ganancia, aunque el valor pasó de 2,000 a 4,000.
+    assert row["basis"] == "cost"
+    assert row["start_value_base"] == 4000 and row["current_value_base"] == 4000
+    assert row["gain_base"] == 0 and row["annualized_return_pct"] is None

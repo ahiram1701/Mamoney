@@ -144,3 +144,13 @@ def test_index_is_never_cached(tmp_path) -> None:  # type: ignore[no-untyped-def
             os.environ["MAMONEY_STATIC_DIR"] = original
         config.get_config.cache_clear()
         importlib.reload(main)
+
+
+def test_export_covers_every_data_table() -> None:
+    from sqlmodel import SQLModel
+
+    from mamoney.routers.system import EXPORT_TABLES
+
+    exported = {m.__tablename__ for m in EXPORT_TABLES}  # type: ignore[attr-defined]
+    internal = {"setting", "alembic_version"}
+    assert set(SQLModel.metadata.tables) - internal == exported
