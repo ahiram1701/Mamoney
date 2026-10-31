@@ -382,7 +382,7 @@ function BudgetForm({ open, onClose }: { open: boolean; onClose: () => void }) {
                 className="input w-28 text-right"
                 type="number"
                 min="0"
-                step="100"
+                step="any"
                 value={current[key] ?? ""}
                 onChange={(e) => setValues({ ...current, [key]: e.target.value })}
               />

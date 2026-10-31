@@ -6,6 +6,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- Los campos de monto de metas, presupuesto y proyección rechazaban cantidades que no fueran
+  múltiplos de 100 (p. ej. 5000 en una meta), y los de porcentaje las que tenían más de un
+  decimal. Ahora aceptan cualquier cantidad.
+
 ## [0.3.1] - 2026-10-30
 
 ### Corregido

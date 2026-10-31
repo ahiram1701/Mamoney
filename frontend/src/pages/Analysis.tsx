@@ -132,7 +132,7 @@ export function AnalysisPage() {
             <input
               className="input"
               type="number"
-              step="0.1"
+              step="any"
               placeholder={proj ? String(proj.annual_return_pct) : ""}
               value={rate}
               onChange={(e) => setRate(e.target.value)}
@@ -142,7 +142,7 @@ export function AnalysisPage() {
             <input
               className="input"
               type="number"
-              step="100"
+              step="any"
               placeholder={proj ? String(Math.round(proj.monthly_savings)) : ""}
               value={savings}
               onChange={(e) => setSavings(e.target.value)}

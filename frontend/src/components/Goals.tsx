@@ -151,7 +151,7 @@ function GoalForm({ goal, onClose }: { goal: GoalRow | "new" | null; onClose: ()
             className="input"
             type="number"
             min="1"
-            step="100"
+            step="any"
             required
             value={form.target_amount}
             onChange={set("target_amount")}
@@ -188,7 +188,7 @@ function GoalForm({ goal, onClose }: { goal: GoalRow | "new" | null; onClose: ()
               className="input"
               type="number"
               min="0"
-              step="100"
+              step="any"
               value={form.manual_amount}
               onChange={set("manual_amount")}
             />

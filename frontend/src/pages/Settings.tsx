@@ -233,7 +233,7 @@ function PreferencesCard() {
           <input
             className="input"
             type="number"
-            step="0.1"
+            step="any"
             value={retValue}
             onChange={(e) => setRet(e.target.value)}
           />
