@@ -521,21 +521,21 @@ def goal_progress(snap: Snapshot, goal: Goal, monthly_savings: float) -> Row:
 
     El avance es el valor actual del activo ligado (p. ej. la cuenta del fondo de emergencia) o
     el monto capturado a mano. El ritmo se estima con lo que creció ese activo en los últimos
-    6 meses; sin activo, con el ahorro mensual (flujo libre).
+    6 meses (o desde su primer valor); sin activo, con el ahorro mensual (flujo libre). Con menos
+    de un mes de historial no hay ritmo confiable y la meta queda "en curso", sin juzgarla.
     """
     asset = next((a for a in snap.assets if a.id == goal.asset_id), None) if goal.asset_id else None
+    pace: float | None
     if asset is not None:
         current = abs(snap.value_at(asset, snap.today) or 0.0)
         y, m = add_months(snap.today.year, snap.today.month, -6)
-        past = snap.value_at(asset, clamp_day(y, m, snap.today.day))
         first = snap.valuations.get(asset.id or -1, [None])[0]
-        if past is not None and first is not None:
-            span = max(
-                _months_between(max(first.date, clamp_day(y, m, snap.today.day)), snap.today), 1
-            )
-            pace = (current - abs(past)) / span
-        else:
-            pace = 0.0
+        pace = None
+        if first is not None:
+            start = max(first.date, clamp_day(y, m, snap.today.day))
+            span = _months_between(start, snap.today)
+            if span >= 1:
+                pace = (current - abs(snap.value_at(asset, start) or 0.0)) / span
     else:
         current = goal.manual_amount
         pace = monthly_savings
@@ -550,6 +550,8 @@ def goal_progress(snap: Snapshot, goal: Goal, monthly_savings: float) -> Row:
     eta = None
     if remaining == 0:
         status = "done"
+    elif pace is None:
+        status = "in_progress"
     elif pace > 0:
         months_to_goal = remaining / pace
         eta_day = snap.today + timedelta(days=round(months_to_goal * 30.4375))
@@ -573,7 +575,7 @@ def goal_progress(snap: Snapshot, goal: Goal, monthly_savings: float) -> Row:
         "current": _r(current),
         "remaining": _r(remaining),
         "pct": _r(pct),
-        "monthly_pace": _r(pace),
+        "monthly_pace": _r(pace or 0.0),
         "monthly_needed": _r(monthly_needed) if monthly_needed is not None else None,
         "eta": eta,
         "status": status,

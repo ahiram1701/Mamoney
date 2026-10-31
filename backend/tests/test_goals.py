@@ -28,6 +28,26 @@ def test_goal_linked_to_asset_uses_its_growth() -> None:
     assert row["status"] == "on_track"
 
 
+def test_linked_goal_without_a_month_of_history_is_not_judged() -> None:
+    snap = _snap([(dt.date(2026, 6, 25), 100), (dt.date(2026, 7, 1), 3700)])
+    goal = Goal(
+        id=5, name="Regalos", target_amount=5000, target_date=dt.date(2026, 12, 14), asset_id=1
+    )
+    row = an.goal_progress(snap, goal, monthly_savings=0)
+    assert row["status"] == "in_progress" and row["eta"] is None
+    assert row["monthly_needed"] == pytest.approx(1300 / (166 / 30.4375), rel=1e-3)
+
+
+def test_linked_goal_with_short_history_uses_growth_since_first_value() -> None:
+    snap = _snap([(dt.date(2026, 4, 1), 1000), (dt.date(2026, 7, 1), 4000)])
+    goal = Goal(
+        id=6, name="Viaje", target_amount=5000, target_date=dt.date(2026, 12, 1), asset_id=1
+    )
+    row = an.goal_progress(snap, goal, monthly_savings=0)
+    assert row["monthly_pace"] == pytest.approx(3000 / (91 / 30.4375), rel=1e-3)
+    assert row["status"] == "on_track"
+
+
 def test_manual_goal_uses_free_cash_flow_and_detects_behind() -> None:
     snap = _snap([])
     goal = Goal(

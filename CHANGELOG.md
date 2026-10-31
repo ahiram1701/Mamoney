@@ -6,6 +6,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- Una meta ligada a un activo con menos de un mes de historial aparecía como "Atrasada" aunque
+  fuera bien. Ahora queda "En curso" hasta tener un mes de datos, y con menos de 6 meses el ritmo
+  se calcula desde el primer valor del activo.
+
 ## [0.3.2] - 2026-10-31
 
 ### Corregido
