@@ -411,3 +411,133 @@ def test_performance_does_not_count_new_money_as_gain(client: TestClient, market
     assert row["basis"] == "cost"
     assert row["start_value_base"] == 4000 and row["current_value_base"] == 4000
     assert row["gain_base"] == 0 and row["annualized_return_pct"] is None
+
+
+# --- Operaciones capturadas en otra moneda ------------------------------------------------
+
+
+def _mxn(day: int, side: TradeSide, qty: float, price: float, fee: float, rate: float) -> Trade:
+    trade = _trade(day, side, qty, price, fee)
+    trade.currency, trade.fx_rate = "MXN", rate
+    return trade
+
+
+def test_mxn_trades_keep_usd_cost_and_exact_mxn_cost() -> None:
+    securities = {1: portfolio.Security(id=1, symbol="VOO", currency="USD")}
+    rates = {dt.date(2026, 1, 1): 20.0, dt.date(2026, 1, 2): 18.0}
+
+    def to_base(amount: float, currency: str, on: dt.date) -> float:
+        return amount if currency == "MXN" else amount * rates[on]
+
+    book = portfolio.apply_trades(
+        [
+            _mxn(1, TradeSide.buy, 2, 10000, 40, rate=20.0),  # pagó 20,040 MXN
+            _trade(2, TradeSide.buy, 1, 500, 0),  # en USD, al tipo de cambio del día (18)
+        ],
+        base_for=portfolio.base_cost(securities, to_base),  # type: ignore[arg-type]
+    )
+    pos = book.positions[1]
+    assert pos.cost == pytest.approx(20040 / 20 + 500)  # en USD
+    assert pos.cost_base == pytest.approx(20040 + 500 * 18)  # lo que realmente pagó en MXN
+    assert pos.fees == pytest.approx(2)
+
+
+def test_mxn_sale_realizes_gain_in_both_currencies() -> None:
+    securities = {1: portfolio.Security(id=1, symbol="VOO", currency="USD")}
+
+    def to_base(amount: float, currency: str, on: dt.date) -> float:
+        assert currency == "MXN"
+        return amount
+
+    book = portfolio.apply_trades(
+        [
+            _mxn(1, TradeSide.buy, 2, 10000, 0, rate=20.0),
+            _mxn(2, TradeSide.sell, 1, 11000, 100, rate=18.0),
+        ],
+        base_for=portfolio.base_cost(securities, to_base),  # type: ignore[arg-type]
+    )
+    pos = book.positions[1]
+    # En USD: vendió a 611.11 - 5.56 de comisión contra un costo de 500.
+    assert pos.realized == pytest.approx((11000 - 100) / 18 - 500)
+    # En MXN: recibió 10,900 contra un costo de 10,000.
+    assert pos.realized_base == pytest.approx(900)
+    assert pos.cost_base == pytest.approx(10000) and pos.quantity == 1
+
+
+def test_trade_api_in_mxn_uses_daily_rate_and_reports_mxn_gain(client: TestClient, market) -> None:  # type: ignore[no-untyped-def]
+    client.post("/api/fx/rates", json={"currency": "USD", "date": "2020-01-01", "rate_to_base": 20})
+    account = _account(client)
+    r = client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "AAPL",
+            "date": TODAY.isoformat(),
+            "quantity": 1,
+            "price": 3800,
+            "fee": 20,
+            "currency": "mxn",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["currency"] == "MXN" and r.json()["fx_rate"] == 20
+
+    trade = client.get("/api/portfolio/trades").json()[0]
+    assert trade["currency"] == "MXN" and trade["security_currency"] == "USD"
+    assert trade["total"] == 3820
+
+    pos = client.get("/api/portfolio/positions").json()["positions"][0]
+    assert pos["cost"] == pytest.approx(191) and pos["cost_base"] == pytest.approx(3820)
+    assert pos["value_base"] == 200 * 20 and pos["gain_base"] == pytest.approx(4000 - 3820)
+
+    # El tipo de cambio del bróker manda sobre el del día.
+    r = client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "AAPL",
+            "date": TODAY.isoformat(),
+            "quantity": 1,
+            "price": 3900,
+            "currency": "MXN",
+            "fx_rate": 19.5,
+        },
+    )
+    assert r.json()["fx_rate"] == 19.5
+
+    # Capturar en la moneda del instrumento no guarda moneda ni tipo de cambio.
+    r = client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "AAPL",
+            "date": TODAY.isoformat(),
+            "quantity": 1,
+            "price": 200,
+            "currency": "USD",
+        },
+    )
+    assert r.json()["currency"] is None and r.json()["fx_rate"] is None
+
+
+def test_trade_in_mxn_without_rate_is_rejected(client: TestClient, market) -> None:  # type: ignore[no-untyped-def]
+    account = _account(client)
+    r = client.post(
+        "/api/portfolio/trades",
+        json={
+            "asset_id": account,
+            "symbol": "AAPL",
+            "date": TODAY.isoformat(),
+            "quantity": 1,
+            "price": 3800,
+            "currency": "MXN",
+        },
+    )
+    assert r.status_code == 422 and "tipo de cambio" in r.json()["detail"]
+
+
+def test_fx_rate_endpoint(client: TestClient) -> None:
+    client.post("/api/fx/rates", json={"currency": "USD", "date": "2026-01-01", "rate_to_base": 18})
+    r = client.get("/api/fx/rate", params={"currency": "usd", "date": "2026-02-01"})
+    assert r.json()["rate"] == 18 and r.json()["to"] == "MXN"
+    assert client.get("/api/fx/rate", params={"currency": "EUR"}).status_code == 404

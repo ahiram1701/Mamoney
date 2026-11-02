@@ -86,8 +86,10 @@ def test_upgrade_keeps_trades_and_allows_balances(tmp_path: Path) -> None:
     init_db(engine)
 
     with engine.begin() as conn:
-        row = conn.execute(text("SELECT side, quantity, price FROM trade WHERE id = 1")).one()
-        assert tuple(row) == ("buy", 3, 500)
+        row = conn.execute(
+            text("SELECT side, quantity, price, currency, fx_rate FROM trade WHERE id = 1")
+        ).one()
+        assert tuple(row) == ("buy", 3, 500, None, None)  # en la moneda del instrumento
         conn.execute(
             text(
                 "INSERT INTO trade (asset_id, security_id, date, side, quantity, price, fee)"

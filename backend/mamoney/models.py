@@ -223,6 +223,11 @@ class TradeBase(SQLModel):
     price: float | None = Field(default=None, ge=0)
     fee: float = Field(default=0, ge=0)
     notes: str | None = None
+    # Moneda en que se capturaron precio y comisión cuando no es la del instrumento (p. ej. una
+    # compra de VOO pagada en MXN), y cuántas unidades de esa moneda valía 1 unidad de la del
+    # instrumento ese día. Sin moneda, precio y comisión están en la moneda del instrumento.
+    currency: str | None = Field(default=None, max_length=8)
+    fx_rate: float | None = Field(default=None, gt=0)
 
 
 class Trade(TradeBase, table=True):

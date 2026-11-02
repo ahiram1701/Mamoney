@@ -2,6 +2,8 @@ import clsx from "clsx";
 import { AlertTriangle, CheckCircle2, Clock, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { money } from "../lib/format";
+
 export function PageHeader({
   title,
   subtitle,
@@ -75,6 +77,73 @@ export function StatTile({
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-ink-2">{hint}</p>}
+    </div>
+  );
+}
+
+/** Barra de avance; se pinta en tono crítico al pasar del 100 %. */
+export function ProgressBar({
+  value,
+  max,
+  label,
+  color = "var(--series-1)",
+}: {
+  value: number;
+  max: number;
+  label: string;
+  color?: string;
+}) {
+  const ratio = max > 0 ? value / max : 0;
+  return (
+    <div
+      className="h-2 rounded-full bg-surface-2"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(ratio * 100)}
+    >
+      <div
+        className="h-2 rounded-full"
+        style={{
+          width: `${Math.min(ratio, 1) * 100}%`,
+          background: ratio > 1 ? "var(--critical)" : color,
+        }}
+      />
+    </div>
+  );
+}
+
+/** Mosaico con barra de avance: "X de Y". */
+export function ProgressTile({
+  label,
+  value,
+  max,
+  hint,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number | null;
+  hint?: string;
+  color?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-3">{label}</p>
+      <p className="tabular mt-1 text-xl font-semibold sm:text-2xl">{money(value)}</p>
+      {max ? (
+        <>
+          <div className="mt-2">
+            <ProgressBar value={value} max={max} label={label} color={color} />
+          </div>
+          <p className="mt-1 text-xs text-ink-2">
+            de {money(max)} · {Math.round((value / max) * 100)} %{hint ? ` · ${hint}` : ""}
+          </p>
+        </>
+      ) : (
+        hint && <p className="mt-1 text-xs text-ink-2">{hint}</p>
+      )}
     </div>
   );
 }
@@ -210,6 +279,7 @@ export function Segmented<T extends string | number>({
       {options.map((o) => (
         <button
           key={String(o.value)}
+          type="button"
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}

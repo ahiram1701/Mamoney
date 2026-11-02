@@ -182,3 +182,74 @@ def test_asset_performance_includes_linked_income() -> None:
     rows = {r["name"]: r for r in an.asset_performance(_snapshot())}
     assert rows["Depa"]["income_base"] == 12_000
     assert rows["Broker USD"]["gain_base"] == 20_000
+
+
+# --- Gastos del mes, historial y resumen ----------------------------------------------------
+
+
+def _with_spending() -> an.Snapshot:
+    from mamoney.models import Spending, SpendingCategory
+
+    snap = _snapshot()
+    snap.spendings = [
+        Spending(
+            id=1,
+            date=date(2026, 6, 3),
+            amount=2_000,
+            category=SpendingCategory.groceries,
+            description="Súper",
+        )
+    ]
+    return snap
+
+
+def test_expense_month_joins_fixed_and_variable() -> None:
+    month = an.expense_month(_with_spending(), {"groceries": 5_000}, 2026, 6)
+    fixed = month["fixed"]
+    # Hipoteca pagada (15,000), Luz por pagar el 20 (1,200), Netflix vencido (15 USD = 300).
+    assert fixed["total"] == 16_500 and fixed["paid"] == 15_000 and fixed["pending"] == 1_500
+    assert fixed["paid_count"] == 1 and fixed["overdue_count"] == 1
+    assert month["variable"]["total"] == 2_000 and month["variable"]["used_pct"] == 40
+    assert month["total"] == 18_500
+    # Mayo: Hipoteca y Netflix programados (sin Luz, que es bimestral).
+    assert month["previous_total"] == 15_300
+    assert month["change_pct"] == pytest.approx(round((18_500 - 15_300) / 15_300 * 100, 2))
+    kinds = {(c["kind"], c["category"]): c["value"] for c in month["by_category"]}
+    assert kinds[("fixed", "housing")] == 15_000
+    assert kinds[("variable", "groceries")] == 2_000
+    assert month["by_category"][0]["category"] == "housing"  # de mayor a menor
+
+
+def test_expense_history_respects_start_dates() -> None:
+    history = {r["month"]: r for r in an.expense_history(_with_spending(), months=7)}
+    assert history["2025-12"]["fixed"] == 15_000  # Netflix y Luz aún no empezaban
+    assert history["2026-01"]["fixed"] == 15_300
+    assert history["2026-02"]["fixed"] == 16_500  # primera Luz
+    assert history["2026-06"]["variable"] == 2_000
+    assert history["2026-06"]["total"] == 18_500
+
+
+def test_summary_month_change_and_flow() -> None:
+    s = an.summary(_with_spending())
+    # Cierre de mayo: el broker valía 10,000 USD; hoy 11,000 USD (a 20 MXN).
+    assert s["net_worth_change"] == 20_000
+    assert s["net_worth_change_pct"] == pytest.approx(round(20_000 / 1_300_000 * 100, 2))
+    flow = s["month_flow"]
+    assert flow["income"] == 62_000 and flow["fixed_paid"] == 15_000
+    assert flow["fixed_pending"] == 1_500 and flow["variable"] == 2_000
+    assert flow["available"] == 62_000 - 15_000 - 2_000
+
+
+def test_summary_without_previous_history_has_no_change() -> None:
+    snap = _snapshot()
+    for vals in snap.valuations.values():
+        for v in vals:
+            v.date = date(2026, 6, 1)
+    assert an.summary(snap)["net_worth_change"] is None
+
+
+def test_expense_endpoints(client) -> None:  # type: ignore[no-untyped-def]
+    month = client.get("/api/analytics/expenses/month", params={"month": "2026-03"}).json()
+    assert month["month"] == "2026-03" and month["total"] == 0
+    assert len(client.get("/api/analytics/expenses/history").json()) == 12
+    assert "month_flow" in client.get("/api/analytics/summary").json()

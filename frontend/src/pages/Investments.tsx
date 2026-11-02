@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useApiMutation, useAssets, usePositions, useTrades } from "../api/hooks";
 import type { Asset, PositionRow, SecurityKind, SecuritySearchResult } from "../api/types";
+import { CaptureCurrencyFields } from "../components/CaptureCurrency";
 import { Donut } from "../components/charts/Charts";
 import { foldOther } from "../components/charts/palette";
 import {
@@ -18,6 +19,7 @@ import {
   Segmented,
   StatTile,
 } from "../components/ui";
+import { useCaptureCurrency } from "../lib/captureCurrency";
 import { money, number, pct, shortDate, todayIso } from "../lib/format";
 import { MissingRatesBanner } from "./Dashboard";
 
@@ -34,6 +36,7 @@ interface BalanceTarget {
   kind?: SecurityKind;
   quantity?: number;
   accountId?: number;
+  currency?: string;
 }
 
 const targetOf = (p: PositionRow): BalanceTarget => ({
@@ -42,6 +45,7 @@ const targetOf = (p: PositionRow): BalanceTarget => ({
   kind: p.kind,
   quantity: p.quantity,
   accountId: p.account_id,
+  currency: p.currency,
 });
 
 const KIND_LABEL: Record<string, string> = {
@@ -191,7 +195,7 @@ export function InvestmentsPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
         <Card
           title="Posiciones"
-          subtitle="Precio y valor en la moneda del instrumento; peso sobre el total en MXN"
+          subtitle="Precio y valor en la moneda del instrumento; la ganancia en MXN incluye el tipo de cambio"
         >
           {positions.length === 0 ? (
             <EmptyState title="Sin posiciones abiertas">
@@ -218,6 +222,9 @@ export function InvestmentsPage() {
                     <div className="mt-1 flex items-center justify-between gap-3 text-xs text-ink-3">
                       <p>
                         Costo prom. {money(p.avg_cost, p.currency)} · {pct(p.weight_pct)} del total
+                        <br />
+                        En MXN:{" "}
+                        <Gain value={p.gain_base} pctValue={p.gain_base_pct} currency="MXN" />
                       </p>
                       <button className="btn btn-sm" onClick={() => setBalanceFor(targetOf(p))}>
                         Saldo
@@ -227,7 +234,7 @@ export function InvestmentsPage() {
                 ))}
               </ul>
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr className="border-b border-line text-left text-xs text-ink-3">
                       <th className="py-2 font-medium">Instrumento</th>
@@ -236,6 +243,12 @@ export function InvestmentsPage() {
                       <th className="py-2 text-right font-medium">Precio</th>
                       <th className="py-2 text-right font-medium">Valor</th>
                       <th className="py-2 text-right font-medium">Ganancia</th>
+                      <th
+                        className="py-2 text-right font-medium"
+                        title="Contra lo que pagaste en pesos: incluye el efecto del tipo de cambio"
+                      >
+                        Ganancia MXN
+                      </th>
                       <th className="py-2 text-right font-medium">Peso</th>
                       <th />
                     </tr>
@@ -258,6 +271,9 @@ export function InvestmentsPage() {
                         </td>
                         <td className="tabular py-2 text-right">
                           <Gain value={p.gain} pctValue={p.gain_pct} currency={p.currency} />
+                        </td>
+                        <td className="tabular py-2 text-right">
+                          <Gain value={p.gain_base} pctValue={p.gain_base_pct} currency="MXN" />
                         </td>
                         <td className="tabular py-2 text-right text-ink-2">{pct(p.weight_pct)}</td>
                         <td className="py-2 text-right">
@@ -317,7 +333,14 @@ export function InvestmentsPage() {
                       <strong>{t.symbol}</strong>
                     </td>
                     <td className="tabular py-2 text-right">{number(t.quantity, 8)}</td>
-                    <td className="tabular py-2 text-right">{money(t.price, t.currency)}</td>
+                    <td className="tabular py-2 text-right">
+                      {money(t.price, t.currency)}
+                      {t.fx_rate ? (
+                        <span className="block text-xs text-ink-3">
+                          TC {number(t.fx_rate, 4)} {t.currency}/{t.security_currency}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="tabular py-2 text-right font-medium">
                       {money(t.total, t.currency)}
                     </td>
@@ -446,20 +469,27 @@ function TradeForm({
     price: "",
     fee: "",
   });
-  const [currency, setCurrency] = useState("USD");
+  const [quote, setQuote] = useState<{ price: number; currency: string } | null>(null);
+  const [priceTouched, setPriceTouched] = useState(false);
+  const capture = useCaptureCurrency(quote?.currency ?? "USD", form.date);
   const add = useApiMutation("POST", "/api/portfolio/trades");
   const accountId = form.asset_id || String(accounts[0]?.id ?? "");
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // Mientras no se edite, el precio es la cotización convertida a la moneda de captura.
+  const autoPrice =
+    quote && capture.rate ? String(Number((quote.price * capture.rate).toFixed(4))) : "";
+  const price = priceTouched ? form.price : autoPrice;
+
   const pick = async (r: SecuritySearchResult) => {
     setPicked(r);
     try {
-      const q = await api<{ price: number; currency: string }>(
-        `/api/portfolio/quote?symbol=${encodeURIComponent(r.symbol)}`,
+      setQuote(
+        await api<{ price: number; currency: string }>(
+          `/api/portfolio/quote?symbol=${encodeURIComponent(r.symbol)}`,
+        ),
       );
-      setCurrency(q.currency);
-      setForm((f) => ({ ...f, price: f.price || String(q.price) }));
     } catch {
       /* el precio se captura a mano */
     }
@@ -475,15 +505,21 @@ function TradeForm({
       side: form.side,
       date: form.date,
       quantity: Number(form.quantity),
-      price: Number(form.price),
+      price: Number(price),
       fee: Number(form.fee || 0),
+      ...capture.payload(),
     });
     setPicked(null);
+    setQuote(null);
+    setPriceTouched(false);
     setForm((f) => ({ ...f, quantity: "", price: "", fee: "" }));
     onClose();
   };
 
-  const total = Number(form.quantity || 0) * Number(form.price || 0);
+  const currency = capture.currency;
+  const fee = Number(form.fee || 0);
+  const gross = Number(form.quantity || 0) * Number(price || 0);
+  const total = form.side === "sell" ? gross - fee : gross + fee;
 
   return (
     <Modal open={open} title="Registrar operación" onClose={onClose}>
@@ -497,7 +533,14 @@ function TradeForm({
                   {KIND_LABEL[picked.kind]} · {picked.name}
                 </p>
               </div>
-              <button type="button" className="btn btn-sm" onClick={() => setPicked(null)}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  setPicked(null);
+                  setQuote(null);
+                }}
+              >
                 Cambiar
               </button>
             </div>
@@ -530,6 +573,7 @@ function TradeForm({
         ) : (
           <p className="self-center text-sm text-ink-2">Cuenta: {accounts[0]?.name}</p>
         )}
+        <CaptureCurrencyFields capture={capture} />
         <Field label="Títulos" hint="Admite fracciones (p. ej. 0.015 BTC)">
           <input
             className="input"
@@ -548,8 +592,11 @@ function TradeForm({
             step="any"
             min="0"
             required
-            value={form.price}
-            onChange={set("price")}
+            value={price}
+            onChange={(e) => {
+              setPriceTouched(true);
+              setForm((f) => ({ ...f, price: e.target.value }));
+            }}
           />
         </Field>
         <Field label="Fecha">
@@ -573,7 +620,14 @@ function TradeForm({
           />
         </Field>
         <p className="text-sm text-ink-2 sm:col-span-2">
-          Total: <strong className="tabular text-ink">{money(total, currency)}</strong>
+          Total {form.side === "sell" ? "recibido" : "pagado"}:{" "}
+          <strong className="tabular text-ink">{money(total, currency)}</strong>
+          {capture.foreign && capture.rate ? (
+            <span className="text-ink-3">
+              {" "}
+              ≈ {money(total / capture.rate, capture.securityCurrency)}
+            </span>
+          ) : null}
         </p>
         <div className="sm:col-span-2">
           <ErrorText error={add.error} />
@@ -613,6 +667,7 @@ function BalanceForm({
     date: todayIso(),
     price: "",
   });
+  const capture = useCaptureCurrency(target?.currency ?? "USD", form.date);
   const add = useApiMutation("POST", "/api/portfolio/trades");
   const accountId = form.asset_id || String(accounts[0]?.id ?? "");
   const updating = target?.quantity != null;
@@ -630,6 +685,7 @@ function BalanceForm({
       date: form.date,
       quantity: Number(form.quantity),
       price: form.price === "" ? null : Number(form.price),
+      ...(form.price === "" ? {} : capture.payload()),
     });
     onClose();
   };
@@ -699,8 +755,9 @@ function BalanceForm({
             </select>
           </Field>
         )}
+        <CaptureCurrencyFields capture={capture} />
         <Field
-          label="Costo promedio por título (opcional)"
+          label={`Costo promedio por título en ${capture.currency} (opcional)`}
           hint="Si lo dejas vacío, la ganancia se mide desde el precio de esa fecha."
           className="sm:col-span-2"
         >

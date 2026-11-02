@@ -5,6 +5,8 @@ import { useSearchParams } from "react-router-dom";
 import {
   useApiMutation,
   useAssets,
+  useExpenseHistory,
+  useExpenseMonth,
   useExpenses,
   useExpensesByCategory,
   useSettings,
@@ -12,7 +14,9 @@ import {
   useUpcoming,
 } from "../api/hooks";
 import type { FixedExpense, UpcomingPayment } from "../api/types";
-import { HBars } from "../components/charts/Charts";
+import { ChartFrame, DataTable, HBars, Legend, StackedBars } from "../components/charts/Charts";
+import { SERIES } from "../components/charts/palette";
+import { MonthNav } from "../components/MonthNav";
 import {
   Card,
   EmptyState,
@@ -20,31 +24,200 @@ import {
   Field,
   Modal,
   PageHeader,
+  ProgressTile,
   Segmented,
   SelectOptions,
   StatTile,
   StatusBadge,
 } from "../components/ui";
-import { money, shortDate, todayIso } from "../lib/format";
-import { EXPENSE_CATEGORIES, FREQUENCIES, label, type ExpenseCategory } from "../lib/labels";
+import { money, monthLabel, pct, shortDate, todayIso } from "../lib/format";
+import {
+  EXPENSE_CATEGORIES,
+  FREQUENCIES,
+  SPENDING_CATEGORIES,
+  label,
+  type ExpenseCategory,
+} from "../lib/labels";
+import { thisMonth } from "../lib/month";
 import { CurrencySelect } from "./Assets";
 import { VariableSpending } from "./Spending";
 
+type Tab = "month" | "fixed" | "variables";
+const TAB_PARAM: Record<Tab, string | null> = {
+  month: null,
+  fixed: "fijos",
+  variables: "variables",
+};
+
 export function ExpensesPage() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "variables" ? "variables" : "fixed";
+  const param = params.get("tab");
+  const tab: Tab = param === "variables" ? "variables" : param === "fijos" ? "fixed" : "month";
   const tabs = (
     <Segmented
-      label="Tipo de gasto"
+      label="Vista de gastos"
       value={tab}
-      onChange={(v) => setParams(v === "variables" ? { tab: "variables" } : {})}
+      onChange={(v) => {
+        const value = TAB_PARAM[v];
+        setParams(value ? { tab: value } : {});
+      }}
       options={[
+        { value: "month", label: "Este mes" },
         { value: "fixed", label: "Fijos" },
         { value: "variables", label: "Variables y presupuesto" },
       ]}
     />
   );
-  return tab === "variables" ? <VariableSpending tabs={tabs} /> : <FixedExpenses tabs={tabs} />;
+  if (tab === "variables") return <VariableSpending tabs={tabs} />;
+  if (tab === "fixed") return <FixedExpenses tabs={tabs} />;
+  return <MonthOverview tabs={tabs} />;
+}
+
+const HISTORY_SERIES = [
+  { key: "fixed", label: "Fijos", color: SERIES[0] },
+  { key: "variable", label: "Variables", color: SERIES[2] },
+];
+
+const KIND_LABEL = { fixed: "Fijo", variable: "Variable" } as const;
+
+function MonthOverview({ tabs }: { tabs: ReactNode }) {
+  const [month, setMonth] = useState(thisMonth);
+  const { data: m } = useExpenseMonth(month);
+  const { data: history = [] } = useExpenseHistory(12);
+  const isCurrent = month === thisMonth();
+
+  const categories = (m?.by_category ?? []).map((c) => ({
+    key: `${c.kind}:${c.category}`,
+    value: c.value,
+  }));
+  const categoryLabels = Object.fromEntries(
+    (m?.by_category ?? []).map((c) => [
+      `${c.kind}:${c.category}`,
+      `${label(c.kind === "fixed" ? EXPENSE_CATEGORIES : SPENDING_CATEGORIES, c.category)} · ${KIND_LABEL[c.kind]}`,
+    ]),
+  );
+  const change = m?.change_pct;
+
+  return (
+    <>
+      <PageHeader
+        title="Gastos"
+        subtitle="Todo lo que sale en el mes: pagos fijos y gastos variables."
+        actions={tabs}
+      />
+      <MonthNav month={month} onChange={setMonth} />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          label="Gasto del mes"
+          value={money(m?.total)}
+          tone={change != null && change > 0 ? "critical" : "neutral"}
+          hint={
+            change != null
+              ? `${change > 0 ? "▲" : change < 0 ? "▼" : "="} ${pct(Math.abs(change), 0)} vs. ${money(m?.previous_total, "MXN", true)} del mes anterior`
+              : "Sin mes anterior para comparar"
+          }
+        />
+        <ProgressTile
+          label="Fijos pagados"
+          value={m?.fixed.paid ?? 0}
+          max={m?.fixed.total ?? null}
+          color="var(--good)"
+          hint={
+            m?.fixed.overdue_count
+              ? `${m.fixed.overdue_count} vencido${m.fixed.overdue_count > 1 ? "s" : ""}`
+              : undefined
+          }
+        />
+        <ProgressTile
+          label="Variables"
+          value={m?.variable.total ?? 0}
+          max={m?.variable.limit ?? null}
+          hint={m?.variable.limit ? "del presupuesto" : "Sin presupuesto definido"}
+        />
+        <StatTile
+          label={isCurrent ? "Falta por pagar" : "Quedó sin pagar"}
+          value={money(m?.fixed.pending)}
+          tone={m?.fixed.overdue_count ? "critical" : "neutral"}
+          hint={
+            m && m.fixed.items.length
+              ? `${m.fixed.paid_count} de ${m.fixed.items.length} pagos fijos hechos`
+              : undefined
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card title="Por categoría" subtitle="Fijos y variables del mes, en MXN">
+          {categories.length ? (
+            <HBars data={categories} labels={categoryLabels} />
+          ) : (
+            <EmptyState title="Sin gastos en este mes" />
+          )}
+        </Card>
+        <Card
+          title="Pagos fijos del mes"
+          subtitle={`${m?.fixed.paid_count ?? 0} de ${m?.fixed.items.length ?? 0} pagados`}
+        >
+          {m?.fixed.items.length ? (
+            <ul className="divide-y divide-line">
+              {m.fixed.items.map((u) => (
+                <PaymentRow key={`${u.expense_id}-${u.due_date}`} item={u} />
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="Sin pagos fijos en este mes" />
+          )}
+        </Card>
+      </div>
+
+      <Card
+        className="mt-4"
+        title="Historial"
+        subtitle="Últimos 12 meses. Los fijos cuentan lo pagado o, si no lo registraste, lo programado"
+      >
+        {history.some((h) => h.total > 0) ? (
+          <>
+            <ChartFrame
+              height={260}
+              chart={
+                <StackedBars
+                  data={history}
+                  xKey="month"
+                  series={HISTORY_SERIES}
+                  xFormat={monthLabel}
+                />
+              }
+              table={
+                <DataTable
+                  columns={[
+                    { key: "month", label: "Mes" },
+                    { key: "fixed", label: "Fijos", money: true },
+                    { key: "variable", label: "Variables", money: true },
+                    { key: "total", label: "Total", money: true },
+                  ]}
+                  rows={history}
+                />
+              }
+            />
+            <Legend series={HISTORY_SERIES} />
+          </>
+        ) : (
+          <EmptyState title="Aún no hay gastos que graficar" />
+        )}
+      </Card>
+    </>
+  );
+}
+
+const HIDE_PAID_KEY = "mamoney.hide-paid";
+
+function readHidePaid(): boolean {
+  try {
+    return localStorage.getItem(HIDE_PAID_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 const MONTHLY_FACTOR: Record<string, number> = {
@@ -64,7 +237,18 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
   const { data: summary } = useSummary();
   const [days, setDays] = useState(30);
   const { data: upcoming = [] } = useUpcoming(days);
+  const { data: month } = useExpenseMonth(thisMonth());
   const [editing, setEditing] = useState<FixedExpense | "new" | null>(null);
+  const [hidePaid, setHidePaid] = useState(readHidePaid);
+  const toggleHidePaid = (value: boolean) => {
+    setHidePaid(value);
+    try {
+      localStorage.setItem(HIDE_PAID_KEY, value ? "1" : "0");
+    } catch {
+      /* sin almacenamiento: solo no se recuerda */
+    }
+  };
+  const visible = hidePaid ? upcoming.filter((u) => u.status !== "paid") : upcoming;
 
   const overdue = upcoming.filter((u) => u.status === "overdue");
   const pendingTotal = upcoming
@@ -87,8 +271,17 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Total mensualizado" value={money(summary?.monthly_fixed_expenses)} />
-        <StatTile label="Anual" value={money((summary?.monthly_fixed_expenses ?? 0) * 12)} />
+        <StatTile
+          label="Total mensualizado"
+          value={money(summary?.monthly_fixed_expenses)}
+          hint={`${money((summary?.monthly_fixed_expenses ?? 0) * 12)} al año`}
+        />
+        <ProgressTile
+          label="Pagado este mes"
+          value={month?.fixed.paid ?? 0}
+          max={month?.fixed.total ?? null}
+          color="var(--good)"
+        />
         <StatTile label={`Por pagar (${days} días)`} value={money(pendingTotal)} />
         <StatTile
           label="Vencidos"
@@ -102,26 +295,42 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
         <Card
           title="Calendario de pagos"
           actions={
-            <Segmented
-              label="Ventana"
-              value={days}
-              onChange={setDays}
-              options={[
-                { value: 30, label: "30 días" },
-                { value: 60, label: "60 días" },
-                { value: 90, label: "90 días" },
-              ]}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                <input
+                  type="checkbox"
+                  checked={hidePaid}
+                  onChange={(e) => toggleHidePaid(e.target.checked)}
+                />
+                Ocultar pagados
+              </label>
+              <Segmented
+                label="Ventana"
+                value={days}
+                onChange={setDays}
+                options={[
+                  { value: 30, label: "30 días" },
+                  { value: 60, label: "60 días" },
+                  { value: 90, label: "90 días" },
+                ]}
+              />
+            </div>
           }
         >
-          {upcoming.length ? (
+          {visible.length ? (
             <ul className="divide-y divide-line">
-              {upcoming.map((u) => (
+              {visible.map((u) => (
                 <PaymentRow key={`${u.expense_id}-${u.due_date}`} item={u} />
               ))}
             </ul>
           ) : (
-            <EmptyState title="Sin vencimientos en este periodo" />
+            <EmptyState
+              title={
+                hidePaid && upcoming.length
+                  ? "Todo pagado en este periodo"
+                  : "Sin vencimientos en este periodo"
+              }
+            />
           )}
         </Card>
 

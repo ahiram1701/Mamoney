@@ -52,11 +52,11 @@ y se centran en gastos del día a día. Mamoney está pensado para otra pregunta
 
 | Módulo | Qué hace |
 |---|---|
-| **Resumen** | Patrimonio neto, ingreso mensual, gastos fijos, flujo libre, tasa de ahorro, evolución a 24 meses, próximos pagos, **alertas** y avance de tus metas. |
+| **Resumen** | Patrimonio neto y su **cambio en el mes**, ingreso, gastos, flujo libre, evolución a 24 meses, **composición**, lo que te queda **este mes**, inversiones, gasto variable contra presupuesto, próximos pagos, **alertas** y metas. |
 | **Patrimonio** | Activos y deudas con historial de valuaciones, variación, liquidez y distribución por tipo, moneda y liquidez. |
-| **Inversiones** | Acciones y ETFs de EE. UU. y cripto con **precios de mercado automáticos** (Yahoo Finance, respaldo Coinbase): compras, ventas o solo tu saldo; costo promedio, ganancia realizada y no realizada, distribución y valuación automática de la cuenta. |
+| **Inversiones** | Acciones y ETFs de EE. UU. y cripto con **precios de mercado automáticos** (Yahoo Finance, respaldo Coinbase): compras, ventas o solo tu saldo, con precio y comisión **en USD o en MXN** (al tipo de cambio de tu bróker); costo promedio, ganancia realizada y no realizada **también en MXN con el efecto del tipo de cambio**, distribución y valuación automática de la cuenta. |
 | **Ingresos** | Fuentes activas y pasivas, cobros con impuestos retenidos, ingreso neto por mes apilado por fuente, esperado vs. real. |
-| **Gastos** | **Fijos:** pagos recurrentes de cualquier frecuencia (semanal a anual, incluido bimestral y quincenal), calendario de vencimientos, marcar como pagado. **Variables y presupuesto:** gastos por categoría, límite mensual con proyección al cierre e **importación de estados de cuenta** CSV/OFX con categorías sugeridas y sin duplicados. |
+| **Gastos** | **Este mes:** fijos y variables juntos, pagado contra pendiente, comparación con el mes anterior e historial de 12 meses. **Fijos:** pagos recurrentes de cualquier frecuencia (semanal a anual, incluido bimestral y quincenal), calendario de vencimientos, marcar como pagado y ocultar lo pagado. **Variables y presupuesto:** gastos por categoría, límite mensual con proyección al cierre e **importación de estados de cuenta** CSV/OFX con categorías sugeridas y sin duplicados. |
 | **Análisis** | Cobertura de gastos con ingreso pasivo, colchón de liquidez en meses, tasa de ahorro real, deuda/activos, concentración de ingresos, **metas de ahorro**, rendimiento por activo y proyección de patrimonio con interés compuesto. |
 | **Ajustes** | Tipos de cambio (automáticos y manuales), **publicar en Tailscale con un clic** (con código QR), usuarios permitidos, PIN, alertas, actualizaciones, respaldo `.db` y exportación/importación JSON. |
 

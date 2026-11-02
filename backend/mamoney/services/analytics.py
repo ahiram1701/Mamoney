@@ -316,6 +316,13 @@ def summary(snap: Snapshot) -> Row:
             continue
         liquid += snap.value_at(asset, snap.today) or 0.0
 
+    # Cambio contra el cierre del mes anterior (si ya había valuaciones entonces).
+    py, pm = add_months(snap.today.year, snap.today.month, -1)
+    prev_end = clamp_day(py, pm, 31)
+    had_history = any(v.date <= prev_end for vals in snap.valuations.values() for v in vals)
+    prev_nw = net_worth_at(snap, prev_end)["net_worth"] if had_history else None
+    nw_change = nw["net_worth"] - prev_nw if prev_nw is not None else None
+
     month_key = f"{snap.today.year:04d}-{snap.today.month:02d}"
     this_month = next(
         (m["total"] for m in income_by_month(snap, 1) if m["month"] == month_key), 0.0
@@ -329,6 +336,11 @@ def summary(snap: Snapshot) -> Row:
 
     def ratio(a: float, b: float, scale: float = 1.0) -> float | None:
         return _r(a / b * scale) if b else None
+
+    due = fixed_due_in_month(snap, snap.today.year, snap.today.month)
+    fixed_paid = sum(float(r["amount_base"]) for r in due if r["status"] == "paid")
+    fixed_pending = sum(float(r["amount_base"]) for r in due if r["status"] != "paid")
+    variable_month = sum(spending_totals(snap, snap.today.year, snap.today.month).values())
 
     return {
         "base_currency": snap.fx.base,
@@ -346,6 +358,18 @@ def summary(snap: Snapshot) -> Row:
         "runway_months": ratio(liquid, fixed),
         "debt_to_assets_pct": ratio(nw["liabilities"], nw["assets"], 100),
         "income_concentration_pct": _r(concentration) if concentration is not None else None,
+        "net_worth_change": _r(nw_change) if nw_change is not None else None,
+        "net_worth_change_pct": ratio(nw_change, abs(prev_nw), 100)
+        if nw_change is not None and prev_nw
+        else None,
+        "month_flow": {
+            "income": _r(this_month),
+            "fixed_paid": _r(fixed_paid),
+            "fixed_pending": _r(fixed_pending),
+            "variable": _r(variable_month),
+            "spent": _r(fixed_paid + variable_month),
+            "available": _r(this_month - fixed_paid - variable_month),
+        },
         "missing_rates": sorted(snap.missing_rates),
     }
 
@@ -510,6 +534,108 @@ def spending_by_month(snap: Snapshot, months: int = 6) -> list[Row]:
             }
         )
     return result
+
+
+def fixed_due_in_month(snap: Snapshot, year: int, month: int) -> list[Row]:
+    """Vencimientos de gastos fijos de un mes con su estado; el monto es lo pagado si se pagó."""
+    start, end = date(year, month, 1), clamp_day(year, month, 31)
+    paid = {(p.expense_id, p.due_date): p for p in snap.payments}
+    rows: list[Row] = []
+    for e in snap.expenses:
+        if not e.active:
+            continue
+        for due in occurrences(e.frequency, e.start_date, e.due_day, start, end, e.end_date):
+            payment = paid.get((e.id or -1, due))
+            amount = payment.amount if payment and payment.amount else e.amount
+            if payment is not None:
+                status = "paid"
+            elif due < snap.today:
+                status = "overdue"
+            else:
+                status = "pending"
+            rows.append(
+                {
+                    "expense_id": e.id,
+                    "name": e.name,
+                    "category": e.category,
+                    "due_date": due.isoformat(),
+                    "amount": amount,
+                    "currency": e.currency,
+                    "amount_base": _r(snap.to_base(amount, e.currency, min(due, snap.today))),
+                    "status": status,
+                    "payment_id": payment.id if payment else None,
+                }
+            )
+    rows.sort(key=lambda r: str(r["due_date"]))
+    return rows
+
+
+def _month_totals(snap: Snapshot, year: int, month: int) -> tuple[float, float]:
+    """(fijos, variables) de un mes en moneda base."""
+    fixed = sum(float(r["amount_base"]) for r in fixed_due_in_month(snap, year, month))
+    return fixed, sum(spending_totals(snap, year, month).values())
+
+
+def expense_month(snap: Snapshot, limits: dict[str, float], year: int, month: int) -> Row:
+    """Todo lo que se gasta en un mes: fijos (pagados y por pagar) y variables, por categoría."""
+    items = fixed_due_in_month(snap, year, month)
+    fixed_total = sum(float(r["amount_base"]) for r in items)
+    fixed_paid = sum(float(r["amount_base"]) for r in items if r["status"] == "paid")
+    variable = spending_totals(snap, year, month)
+    variable_total = sum(variable.values())
+    budget = budget_report(snap, limits, year, month)
+
+    by_category: dict[tuple[str, str], float] = defaultdict(float)
+    for r in items:
+        by_category[("fixed", str(r["category"]))] += float(r["amount_base"])
+    for cat, value in variable.items():
+        by_category[("variable", cat)] += value
+
+    total = fixed_total + variable_total
+    py, pm = add_months(year, month, -1)
+    previous = sum(_month_totals(snap, py, pm))
+    return {
+        "month": f"{year:04d}-{month:02d}",
+        "total": _r(total),
+        "previous_total": _r(previous),
+        "change_pct": _r((total - previous) / previous * 100) if previous else None,
+        "fixed": {
+            "total": _r(fixed_total),
+            "paid": _r(fixed_paid),
+            "pending": _r(fixed_total - fixed_paid),
+            "paid_count": sum(1 for r in items if r["status"] == "paid"),
+            "overdue_count": sum(1 for r in items if r["status"] == "overdue"),
+            "items": items,
+        },
+        "variable": {
+            "total": _r(variable_total),
+            "limit": budget["limit"],
+            "used_pct": budget["used_pct"],
+            "days_elapsed": budget["days_elapsed"],
+            "days_in_month": budget["days_in_month"],
+        },
+        "by_category": [
+            {"kind": kind, "category": cat, "value": _r(value)}
+            for (kind, cat), value in sorted(by_category.items(), key=lambda kv: -kv[1])
+            if value
+        ],
+    }
+
+
+def expense_history(snap: Snapshot, months: int = 12) -> list[Row]:
+    """Gasto por mes: fijos (lo pagado o, si no se registró, lo programado) y variables."""
+    rows = []
+    for year, month in last_n_months(snap.today, months):
+        fixed, variable = _month_totals(snap, year, month)
+        rows.append(
+            {
+                "month": f"{year:04d}-{month:02d}",
+                "fixed": _r(fixed),
+                "variable": _r(variable),
+                "total": _r(fixed + variable),
+            }
+        )
+    return rows
 
 
 def _months_between(start: date, end: date) -> float:

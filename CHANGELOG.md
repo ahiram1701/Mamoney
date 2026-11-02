@@ -6,6 +6,33 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- **Operaciones en MXN** (Inversiones): precio y comisión de una acción, ETF o cripto en dólares se
+  pueden capturar en pesos. Mamoney propone el tipo de cambio del día y puedes usar el de tu
+  bróker. Cada posición muestra su **ganancia en MXN**, que incluye el efecto del tipo de cambio
+  (lo que pagaste en pesos contra lo que vale hoy en pesos).
+- **Gastos → Este mes**, nueva vista principal: gasto total del mes contra el anterior, fijos
+  pagados y por pagar, variables contra presupuesto, categorías de fijos y variables juntas, los
+  pagos fijos del mes y un **historial de 12 meses**. Se puede revisar cualquier mes anterior.
+- **Gastos → Fijos**: avance de lo pagado en el mes y opción **Ocultar pagados** en el
+  calendario.
+- **Resumen** renovado:
+  - cambio del patrimonio en el mes;
+  - tarjeta **Este mes** con ingreso, lo ya gastado y lo que queda;
+  - **composición** del patrimonio;
+  - tarjetas de **inversiones** (valor y ganancia) y de **gasto variable** contra presupuesto.
+
+### Cambiado
+
+- El costo y la ganancia en MXN de Inversiones usan el tipo de cambio de la fecha de cada
+  operación, no el de hoy.
+
+### Corregido
+
+- Los botones de opción dentro de un formulario (Compra/Venta, moneda) ya no envían el formulario
+  al tocarlos.
+
 ## [0.3.3] - 2026-10-31
 
 ### Corregido

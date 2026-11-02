@@ -10,6 +10,8 @@ import type {
   AssetRow,
   AuthStatus,
   Distribution,
+  ExpenseHistoryRow,
+  ExpenseMonth,
   FixedExpense,
   FxLatest,
   IncomeEntry,
@@ -156,6 +158,18 @@ export const useBudgetReport = (month: string) =>
 
 export const useBudget = () =>
   useQuery({ queryKey: ["budget"], queryFn: get<Record<string, number>>("/api/budget") });
+
+export const useExpenseMonth = (month: string) =>
+  useQuery({
+    queryKey: ["expense-month", month],
+    queryFn: get<ExpenseMonth>(`/api/analytics/expenses/month?month=${month}`),
+  });
+
+export const useExpenseHistory = (months = 12) =>
+  useQuery({
+    queryKey: ["expense-history", months],
+    queryFn: get<ExpenseHistoryRow[]>(`/api/analytics/expenses/history?months=${months}`),
+  });
 
 export const useGoals = () =>
   useQuery({ queryKey: ["goals"], queryFn: get<GoalRow[]>("/api/goals") });

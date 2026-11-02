@@ -48,10 +48,20 @@ class Position:
     realized: float = 0.0
     fees: float = 0.0
     first_date: dt.date | None = None
+    # Lo mismo en moneda base al tipo de cambio de cada operación (incluye el efecto cambiario).
+    cost_base: float = 0.0
+    realized_base: float = 0.0
 
     @property
     def avg_cost(self) -> float:
         return self.cost / self.quantity if self.quantity > EPSILON else 0.0
+
+    @property
+    def avg_cost_base(self) -> float:
+        return self.cost_base / self.quantity if self.quantity > EPSILON else 0.0
+
+    def close(self) -> None:
+        self.quantity = self.cost = self.cost_base = 0.0
 
 
 @dataclass
@@ -62,16 +72,39 @@ class Book:
 
 
 CostFor = Callable[[Trade], float | None]
+# Convierte un monto de una operación (en moneda del instrumento) a moneda base.
+BaseFor = Callable[[Trade, float], float]
+
+
+def trade_price(trade: Trade) -> float | None:
+    """Precio por título en la moneda del instrumento."""
+    if trade.price is None or not trade.fx_rate:
+        return trade.price
+    return trade.price / trade.fx_rate
+
+
+def trade_fee(trade: Trade) -> float:
+    """Comisión en la moneda del instrumento."""
+    return trade.fee / trade.fx_rate if trade.fx_rate else trade.fee
 
 
 def apply_trades(
-    trades: list[Trade], until: dt.date | None = None, cost_for: CostFor | None = None
+    trades: list[Trade],
+    until: dt.date | None = None,
+    cost_for: CostFor | None = None,
+    base_for: BaseFor | None = None,
 ) -> Book:
     """Aplica las operaciones en orden.
 
     `cost_for(trade)` da el costo por título de un saldo capturado sin precio (normalmente el
     cierre de mercado de esa fecha). Sin él, esos títulos entran con costo 0.
+    `base_for(trade, monto)` lleva los montos a moneda base para `cost_base`/`realized_base`;
+    sin él, esos campos quedan en 0.
     """
+
+    def base(trade: Trade, amount: float) -> float:
+        return base_for(trade, amount) if base_for is not None else 0.0
+
     book = Book()
     # Mismo día: por orden de captura; una operación aún sin guardar (sin id) va al final.
     ordered = sorted(trades, key=lambda t: (t.date, t.id if t.id is not None else float("inf")))
@@ -79,26 +112,33 @@ def apply_trades(
         if until and trade.date > until:
             break
         pos = book.positions.setdefault(trade.security_id, Position(trade.security_id))
-        pos.fees += trade.fee
+        fee = trade_fee(trade)
+        price = trade_price(trade)
+        pos.fees += fee
         if pos.first_date is None:
             pos.first_date = trade.date
         if trade.side == TradeSide.balance:
             delta = trade.quantity - pos.quantity
             if delta > EPSILON:
-                unit_cost = trade.price
+                unit_cost = price
                 if unit_cost is None and cost_for is not None:
                     unit_cost = cost_for(trade)
-                pos.cost += delta * (unit_cost or 0.0) + trade.fee
+                amount = delta * (unit_cost or 0.0) + fee
+                pos.cost += amount
+                pos.cost_base += base(trade, amount)
                 pos.quantity = trade.quantity
             elif delta < -EPSILON:
                 # Salen títulos sin venta: se descuentan al costo promedio, sin ganancia realizada.
                 pos.cost -= pos.avg_cost * -delta
+                pos.cost_base -= pos.avg_cost_base * -delta
                 pos.quantity = trade.quantity
             if pos.quantity < EPSILON:
-                pos.quantity, pos.cost = 0.0, 0.0
+                pos.close()
         elif trade.side == TradeSide.buy:
+            amount = trade.quantity * (price or 0.0) + fee
             pos.quantity += trade.quantity
-            pos.cost += trade.quantity * (trade.price or 0.0) + trade.fee
+            pos.cost += amount
+            pos.cost_base += base(trade, amount)
         else:
             if trade.quantity > pos.quantity + EPSILON:
                 raise PortfolioError(
@@ -106,11 +146,15 @@ def apply_trades(
                     f"({pos.quantity:g})"
                 )
             released = pos.avg_cost * trade.quantity
-            pos.realized += trade.quantity * (trade.price or 0.0) - trade.fee - released
+            released_base = pos.avg_cost_base * trade.quantity
+            proceeds = trade.quantity * (price or 0.0) - fee
+            pos.realized += proceeds - released
+            pos.realized_base += base(trade, proceeds) - released_base
             pos.cost -= released
+            pos.cost_base -= released_base
             pos.quantity -= trade.quantity
             if pos.quantity < EPSILON:
-                pos.quantity, pos.cost = 0.0, 0.0
+                pos.close()
     return book
 
 
@@ -164,6 +208,25 @@ def _convert(fx: FxTable, amount: float, from_cur: str, to_cur: str, on: dt.date
     if from_cur.upper() == to_cur.upper():
         return amount
     return amount * fx.rate(from_cur, on) / fx.rate(to_cur, on)
+
+
+def capture_rate(fx: FxTable, security_currency: str, currency: str, on: dt.date) -> float:
+    """Unidades de `currency` por 1 unidad de la moneda del instrumento en una fecha."""
+    return _convert(fx, 1.0, security_currency, currency, on)
+
+
+def base_cost(
+    securities: dict[int, Security], to_base: Callable[[float, str, dt.date], float]
+) -> BaseFor:
+    """Montos a moneda base: con el tipo de cambio de la operación si se capturó en otra moneda
+    (así una compra pagada en MXN cuesta exactamente lo pagado), o con el del día si no."""
+
+    def convert(trade: Trade, amount: float) -> float:
+        if trade.currency and trade.fx_rate:
+            return to_base(amount * trade.fx_rate, trade.currency, trade.date)
+        return to_base(amount, securities[trade.security_id].currency, trade.date)
+
+    return convert
 
 
 def account_trades(session: Session, asset_id: int) -> list[Trade]:
@@ -339,9 +402,9 @@ def positions_report(session: Session, asset_id: int | None = None) -> dict[str,
     totals = {"value_base": 0.0, "cost_base": 0.0, "realized_base": 0.0}
     missing: set[str] = set()
 
-    def to_base(amount: float, currency: str) -> float:
+    def to_base(amount: float, currency: str, on: dt.date = today) -> float:
         try:
-            return fx.convert(amount, currency, today)
+            return fx.convert(amount, currency, on)
         except MissingRateError as exc:
             missing.add(exc.currency)
             return 0.0
@@ -352,20 +415,23 @@ def positions_report(session: Session, asset_id: int | None = None) -> dict[str,
             continue
         ids = {t.security_id for t in trades}
         prices = PriceBook(session, ids)
-        book = apply_trades(trades, cost_for=market_cost(prices))
-        securities = {
-            s.id: s for s in session.exec(select(Security).where(col(Security.id).in_(ids)))
+        securities: dict[int, Security] = {
+            s.id: s  # type: ignore[misc]
+            for s in session.exec(select(Security).where(col(Security.id).in_(ids)))
         }
+        book = apply_trades(
+            trades, cost_for=market_cost(prices), base_for=base_cost(securities, to_base)
+        )
         for pos in book.positions.values():
             sec = securities[pos.security_id]
-            totals["realized_base"] += to_base(pos.realized, sec.currency)
+            totals["realized_base"] += pos.realized_base
             if pos.quantity < EPSILON:
                 continue
             price = prices.price(pos.security_id, today)
             value = pos.quantity * price if price is not None else None
             gain = value - pos.cost if value is not None else None
-            value_base = to_base(value if value is not None else pos.cost, sec.currency)
-            cost_base = to_base(pos.cost, sec.currency)
+            cost_base = pos.cost_base
+            value_base = to_base(value, sec.currency) if value is not None else cost_base
             totals["value_base"] += value_base
             totals["cost_base"] += cost_base
             rows.append(
@@ -389,6 +455,11 @@ def positions_report(session: Session, asset_id: int | None = None) -> dict[str,
                     else None,
                     "realized": round(pos.realized, 2),
                     "value_base": round(value_base, 2),
+                    "cost_base": round(cost_base, 2),
+                    "gain_base": round(value_base - cost_base, 2),
+                    "gain_base_pct": round((value_base - cost_base) / cost_base * 100, 2)
+                    if cost_base
+                    else None,
                 }
             )
     total_value = totals["value_base"]

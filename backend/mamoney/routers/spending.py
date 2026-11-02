@@ -100,6 +100,19 @@ def budget_report(session: SessionDep, month: str | None = None) -> dict[str, An
     return an.budget_report(an.Snapshot.load(session), budget_limits(session), year, mon)
 
 
+@router.get("/analytics/expenses/month")
+def expense_month(session: SessionDep, month: str | None = None) -> dict[str, Any]:
+    year, mon = _month(month)
+    return an.expense_month(an.Snapshot.load(session), budget_limits(session), year, mon)
+
+
+@router.get("/analytics/expenses/history")
+def expense_history(
+    session: SessionDep, months: int = Query(12, ge=1, le=36)
+) -> list[dict[str, Any]]:
+    return an.expense_history(an.Snapshot.load(session), months)
+
+
 @router.get("/analytics/spending-by-month")
 def spending_by_month(
     session: SessionDep, months: int = Query(6, ge=1, le=36)

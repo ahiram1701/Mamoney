@@ -110,6 +110,47 @@ export interface Summary {
   debt_to_assets_pct: number | null;
   income_concentration_pct: number | null;
   missing_rates: string[];
+  /** Contra el cierre del mes anterior; null sin historial previo. */
+  net_worth_change: number | null;
+  net_worth_change_pct: number | null;
+  month_flow: {
+    income: number;
+    fixed_paid: number;
+    fixed_pending: number;
+    variable: number;
+    spent: number;
+    available: number;
+  };
+}
+
+export interface ExpenseMonth {
+  month: string;
+  total: number;
+  previous_total: number;
+  change_pct: number | null;
+  fixed: {
+    total: number;
+    paid: number;
+    pending: number;
+    paid_count: number;
+    overdue_count: number;
+    items: UpcomingPayment[];
+  };
+  variable: {
+    total: number;
+    limit: number | null;
+    used_pct: number | null;
+    days_elapsed: number;
+    days_in_month: number;
+  };
+  by_category: { kind: "fixed" | "variable"; category: string; value: number }[];
+}
+
+export interface ExpenseHistoryRow {
+  month: string;
+  fixed: number;
+  variable: number;
+  total: number;
 }
 
 export interface NetWorthPoint {
@@ -244,6 +285,10 @@ export interface PositionRow {
   gain_pct: number | null;
   realized: number;
   value_base: number;
+  /** Lo pagado en MXN al tipo de cambio de cada operación. */
+  cost_base: number;
+  gain_base: number;
+  gain_base_pct: number | null;
   weight_pct: number | null;
 }
 
@@ -269,7 +314,10 @@ export interface TradeRow {
   notes: string | null;
   symbol: string;
   security_name: string | null;
+  /** Moneda en que se capturaron precio, comisión y total. */
   currency: string;
+  security_currency: string;
+  fx_rate: number | null;
   account: string;
   total: number | null;
 }

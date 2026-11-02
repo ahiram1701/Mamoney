@@ -1,11 +1,13 @@
-from fastapi import APIRouter
+import datetime as dt
+
+from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
 
 from mamoney.config import get_config
 from mamoney.models import Asset, FixedExpense, FxRate, IncomeSource
 from mamoney.routers.common import SessionDep, get_or_404
 from mamoney.schemas import FxRateCreate
-from mamoney.services.fx import refresh_rates, upsert_rate
+from mamoney.services.fx import FxTable, MissingRateError, refresh_rates, upsert_rate
 from mamoney.settings_store import get_setting
 
 router = APIRouter(prefix="/api/fx", tags=["tipos de cambio"])
@@ -44,6 +46,21 @@ def latest_rates(session: SessionDep) -> list[dict[str, object]]:
             }
         )
     return result
+
+
+@router.get("/rate")
+def rate(
+    session: SessionDep, currency: str, to: str | None = None, date: dt.date | None = None
+) -> dict[str, object]:
+    """Unidades de `to` (moneda base por defecto) por 1 `currency` en una fecha."""
+    fx = FxTable.load(session)
+    on = date or dt.date.today()
+    target = (to or fx.base).upper()
+    try:
+        value = fx.rate(currency, on) / fx.rate(target, on)
+    except MissingRateError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return {"currency": currency.upper(), "to": target, "date": on.isoformat(), "rate": value}
 
 
 @router.post("/rates", response_model=FxRate, status_code=201)

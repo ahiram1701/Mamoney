@@ -11,6 +11,7 @@ from mamoney.db import get_engine
 from mamoney.models import Asset, Security, SecurityKind, Trade, TradeSide
 from mamoney.routers.common import SessionDep, get_or_404
 from mamoney.services import portfolio, quotes
+from mamoney.services.fx import FxTable, MissingRateError
 
 router = APIRouter(prefix="/api/portfolio", tags=["inversiones"])
 
@@ -25,6 +26,10 @@ class TradeCreate(BaseModel):
     price: float | None = Field(default=None, ge=0)
     fee: float = Field(default=0, ge=0)
     notes: str | None = None
+    # Moneda en que se capturaron precio y comisión (p. ej. MXN para una acción en USD) y, si se
+    # conoce, el tipo de cambio que aplicó el bróker; si no llega, se usa el del día.
+    currency: str | None = Field(default=None, min_length=3, max_length=8)
+    fx_rate: float | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def _check_side(self) -> "TradeCreate":
@@ -41,6 +46,25 @@ def _tracked_account(session: Session, asset_id: int) -> Asset:
     if not asset.tracks_positions:
         raise HTTPException(409, "Esta cuenta no lleva posiciones; actívalo al editarla")
     return asset
+
+
+def _capture_currency(
+    session: Session, data: TradeCreate, security: Security
+) -> tuple[str | None, float | None]:
+    """Moneda de captura y su tipo de cambio; (None, None) si es la del instrumento."""
+    currency = (data.currency or security.currency).upper()
+    if currency == security.currency.upper():
+        return None, None
+    if data.fx_rate is not None:
+        return currency, data.fx_rate
+    try:
+        rate = portfolio.capture_rate(FxTable.load(session), security.currency, currency, data.date)
+    except MissingRateError as exc:
+        raise portfolio.PortfolioError(
+            f"Falta el tipo de cambio de {exc.currency} para el {data.date.isoformat()}; "
+            "escríbelo en la operación o agrégalo en Ajustes"
+        ) from exc
+    return currency, round(rate, 6)
 
 
 @router.get("/search")
@@ -83,7 +107,8 @@ def list_trades(session: SessionDep, asset_id: int | None = None) -> list[dict[s
             **trade.model_dump(mode="json"),
             "symbol": sec.symbol,
             "security_name": sec.name,
-            "currency": sec.currency,
+            "currency": trade.currency or sec.currency,
+            "security_currency": sec.currency,
             "account": asset.name,
             "total": (
                 None
@@ -104,10 +129,13 @@ def add_trade(data: TradeCreate, session: SessionDep) -> dict[str, Any]:
     asset = _tracked_account(session, data.asset_id)
     try:
         security = portfolio.get_or_create_security(session, data.symbol, data.kind)
+        currency, fx_rate = _capture_currency(session, data, security)
         trade = Trade(
             asset_id=data.asset_id,
             security_id=security.id,  # type: ignore[arg-type]
-            **data.model_dump(exclude={"asset_id", "symbol", "kind"}),
+            **data.model_dump(exclude={"asset_id", "symbol", "kind", "currency", "fx_rate"}),
+            currency=currency,
+            fx_rate=fx_rate,
         )
         # Valida que las ventas no superen los títulos en ninguna fecha (incluidos saldos).
         portfolio.apply_trades([*portfolio.account_trades(session, asset.id), trade])  # type: ignore[arg-type]

@@ -1,14 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  FileUp,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { api } from "../api/client";
@@ -39,19 +30,8 @@ import {
 } from "../components/ui";
 import { money, pct, shortDate, todayIso } from "../lib/format";
 import { SPENDING_CATEGORIES, label } from "../lib/labels";
-
-const thisMonth = () => todayIso().slice(0, 7);
-
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthName(month: string): string {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-}
+import { monthName, thisMonth } from "../lib/month";
+import { MonthNav } from "../components/MonthNav";
 
 const STATUS_COLOR: Record<BudgetCategoryRow["status"], string> = {
   ok: "var(--series-1)",
@@ -135,26 +115,7 @@ export function VariableSpending({ tabs }: { tabs: ReactNode }) {
         }
       />
 
-      <div className="mb-4 flex items-center gap-2">
-        <button
-          className="btn btn-sm"
-          onClick={() => setMonth((m) => shiftMonth(m, -1))}
-          aria-label="Mes anterior"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <h2 className="min-w-40 text-center font-semibold first-letter:uppercase">
-          {monthName(month)}
-        </h2>
-        <button
-          className="btn btn-sm"
-          onClick={() => setMonth((m) => shiftMonth(m, 1))}
-          disabled={isCurrent}
-          aria-label="Mes siguiente"
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
+      <MonthNav month={month} onChange={setMonth} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Gastado" value={money(report?.spent)} />
