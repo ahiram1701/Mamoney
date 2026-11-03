@@ -330,6 +330,10 @@ def main() -> None:
             f"Mamoney no pudo iniciar.\n\n{traceback.format_exc(limit=3)}\nDetalles en: {log_file}"
         )
         sys.exit(1)
+    # El hilo del icono de la bandeja a veces no termina tras icon.stop() y deja el proceso
+    # vivo sin servidor (y el actualizador esperando). El servidor ya cerró limpio: salir ya.
+    logging.shutdown()
+    os._exit(0)
 
 
 if __name__ == "__main__":

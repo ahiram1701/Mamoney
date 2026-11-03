@@ -6,6 +6,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- Al actualizar desde el icono de la bandeja, Mamoney podía quedarse abierto sin servidor y la
+  actualización se cancelaba. Ahora el proceso siempre termina al cerrarse.
+
 ## [0.4.0] - 2026-11-02
 
 ### Añadido
