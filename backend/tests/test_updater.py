@@ -218,3 +218,10 @@ def test_updater_script_waits_for_webview_and_checks_health() -> None:
     script = updater.UPDATER_SCRIPT
     assert "Wait-Webview" in script and "/api/health" in script
     assert script.count("Start-Mamoney") >= 3  # definición + éxito + restauración
+
+
+def test_updater_script_closes_a_process_left_without_server() -> None:
+    script = updater.UPDATER_SCRIPT
+    wait = script.index("Esperando a que Mamoney")
+    # Si el proceso sigue vivo sin servidor se cierra; solo cancela si sigue respondiendo.
+    assert script.index("if (Test-Healthy)", wait) < script.index("Stop-Process -Id $AppPid", wait)

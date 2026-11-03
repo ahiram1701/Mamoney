@@ -328,8 +328,14 @@ while ((Get-Process -Id $AppPid -ErrorAction SilentlyContinue) -and ((Get-Date) 
     Start-Sleep -Milliseconds 300
 }
 if (Get-Process -Id $AppPid -ErrorAction SilentlyContinue) {
-    Write-Log "Mamoney no se cerró a tiempo; se cancela la actualización"
-    exit 1
+    if (Test-Healthy) {
+        Write-Log "Mamoney no se cerró a tiempo y sigue en uso; se cancela la actualización"
+        exit 1
+    }
+    # El servidor ya cerró pero el proceso quedó vivo (p. ej. el hilo del icono de la bandeja).
+    Write-Log "Mamoney ya cerró su servidor pero el proceso sigue abierto; se cierra"
+    Stop-Process -Id $AppPid -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
 }
 
 $backup = "$Target.old"

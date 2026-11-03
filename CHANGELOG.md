@@ -10,6 +10,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 - Al actualizar desde el icono de la bandeja, Mamoney podía quedarse abierto sin servidor y la
   actualización se cancelaba. Ahora el proceso siempre termina al cerrarse.
+  Además, si eso llegara a pasar, el actualizador cierra ese proceso sin servidor y continúa en
+  lugar de cancelar.
 
 ## [0.4.0] - 2026-11-02
 
