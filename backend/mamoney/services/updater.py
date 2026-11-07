@@ -235,6 +235,15 @@ def download_verified(
     return target
 
 
+def remove_old_staging(work: Path) -> None:
+    """Borra las carpetas `vX.Y.Z` de actualizaciones anteriores (ya instaladas o fallidas)."""
+    if not work.exists():
+        return
+    for folder in work.glob("v*"):
+        if folder.is_dir():
+            shutil.rmtree(folder, ignore_errors=True)
+
+
 def extract_release(zip_path: Path, staging: Path) -> Path:
     """Extrae el paquete y devuelve la carpeta que contiene `Mamoney.exe`."""
     if staging.exists():
@@ -438,13 +447,14 @@ def install_update(
         target = install_dir()
         _check_writable(target.parent)
 
-        from mamoney.routers.system import backup_database
+        from mamoney.services.backups import backup_database
 
         cfg.backup_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_database(cfg.backup_dir / f"antes-de-v{info.version}-{stamp}.db")
 
         work = cfg.updates_dir
+        remove_old_staging(work)
         zip_path = download_verified(info, work, client)
         app_dir = extract_release(zip_path, work / f"v{info.version}")
         script = write_updater_script(work)

@@ -103,7 +103,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface/95 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface/95 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 backdrop-blur md:hidden">
         <Logo />
         <ThemeToggle />
       </header>

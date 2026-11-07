@@ -131,6 +131,10 @@ export function TailscalePanel() {
               cámara del teléfono:
             </p>
             <p className="break-all font-medium">{ts.url}</p>
+            <p className="text-xs text-ink-3">
+              En el iPhone, ábrelo en Safari y toca Compartir → Agregar a pantalla de inicio: se
+              abre como app, a pantalla completa. Te pedirá el PIN una vez.
+            </p>
             <div className="flex flex-wrap gap-2">
               <CopyButton text={ts.url} />
               <a className="btn btn-sm" href={ts.url} target="_blank" rel="noreferrer">

@@ -128,6 +128,7 @@ def test_index_is_never_cached(tmp_path) -> None:  # type: ignore[no-untyped-def
     static = tmp_path / "dist"
     (static / "assets").mkdir(parents=True)
     (static / "index.html").write_text("<div id=root></div>")
+    (static / "manifest.webmanifest").write_text('{"name": "Mamoney"}')
     original = os.environ.get("MAMONEY_STATIC_DIR")
     os.environ["MAMONEY_STATIC_DIR"] = str(static)
     config.get_config.cache_clear()
@@ -137,6 +138,9 @@ def test_index_is_never_cached(tmp_path) -> None:  # type: ignore[no-untyped-def
             r = c.get("/inversiones")
             assert r.status_code == 200
             assert r.headers["cache-control"] == "no-cache"
+            # El manifest de la app web sale con su tipo, también en Windows.
+            m = c.get("/manifest.webmanifest")
+            assert m.headers["content-type"].startswith("application/manifest+json")
     finally:
         if original is None:
             os.environ.pop("MAMONEY_STATIC_DIR", None)

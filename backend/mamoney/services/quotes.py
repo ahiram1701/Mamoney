@@ -7,6 +7,7 @@ el precio spot público de Coinbase.
 
 import datetime as dt
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +21,7 @@ log = logging.getLogger(__name__)
 YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 YAHOO_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search"
 COINBASE_SPOT = "https://api.coinbase.com/v2/prices/{pair}/spot"
+TICKER_RE = re.compile(r"[A-Za-z0-9]{1,10}")
 
 KIND_BY_YAHOO_TYPE = {
     "EQUITY": SecurityKind.stock,
@@ -127,31 +129,51 @@ def fetch_history(
     return sorted(history.items())
 
 
+def _yahoo_search(http: httpx.Client, query: str) -> list[dict[str, Any]]:
+    # Se piden más resultados porque luego se descartan los de otros mercados.
+    resp = http.get(YAHOO_SEARCH, params={"q": query, "quotesCount": 20, "newsCount": 0})
+    resp.raise_for_status()
+    return list(resp.json().get("quotes") or [])
+
+
 def search(query: str, client: httpx.Client | None = None) -> list[dict[str, Any]]:
-    """Busca acciones, ETFs y fondos de EE. UU. y cripto en dólares, por nombre o símbolo."""
+    """Busca acciones, ETFs y fondos de EE. UU. y cripto en dólares, por nombre o símbolo.
+
+    Yahoo trata un símbolo corto como texto ("BAT" devuelve BATL, ABAT…), así que si la consulta
+    parece un símbolo también se busca su par cripto (`BAT-USD`) y las coincidencias exactas van
+    primero.
+    """
     http, own = _client(client)
+    ticker = query.strip().upper() if TICKER_RE.fullmatch(query.strip()) else None
     try:
-        # Se piden más resultados porque luego se descartan los de otros mercados.
-        resp = http.get(YAHOO_SEARCH, params={"q": query, "quotesCount": 20, "newsCount": 0})
-        resp.raise_for_status()
-        quotes = resp.json().get("quotes") or []
+        found = _yahoo_search(http, query)
+        if ticker:
+            try:
+                found += _yahoo_search(http, f"{ticker}-USD")
+            except httpx.HTTPError as exc:
+                log.warning("Sin búsqueda cripto para %s: %s", ticker, exc)
     finally:
         if own:
             http.close()
-    results = []
-    for q in quotes:
+    results: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for q in found:
         kind = KIND_BY_YAHOO_TYPE.get(str(q.get("quoteType")))
         symbol = str(q.get("symbol") or "")
-        if kind is None or not symbol or not is_supported_market(symbol, kind):
+        if kind is None or not symbol or symbol in seen or not is_supported_market(symbol, kind):
             continue
+        seen.add(symbol)
         results.append(
             {
-                "symbol": q["symbol"],
+                "symbol": symbol,
                 "name": q.get("longname") or q.get("shortname"),
                 "kind": kind,
                 "exchange": q.get("exchDisp") or q.get("exchange"),
             }
         )
+    if ticker:
+        exact = {ticker, f"{ticker}-USD"}
+        results.sort(key=lambda r: r["symbol"].upper() not in exact)  # estable: resto en su orden
     return results[:8]
 
 

@@ -32,6 +32,7 @@ class Config:
     quotes_auto_update: bool
     static_dir: Path
     update_check: bool
+    auto_backup: bool
     update_repo: str
     version_override: str | None
 
@@ -67,6 +68,7 @@ def get_config() -> Config:
         quotes_auto_update=os.environ.get("MAMONEY_QUOTES_AUTO", "1") == "1",
         static_dir=Path(os.environ.get("MAMONEY_STATIC_DIR", static_default)),
         update_check=os.environ.get("MAMONEY_UPDATE_CHECK", "1") == "1",
+        auto_backup=os.environ.get("MAMONEY_AUTO_BACKUP", "1") == "1",
         update_repo=os.environ.get("MAMONEY_UPDATE_REPO", "ahiram1701/Mamoney"),
         # Solo para probar el actualizador: hace creer a la app que es otra versión.
         version_override=os.environ.get("MAMONEY_VERSION_OVERRIDE") or None,

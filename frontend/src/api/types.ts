@@ -212,6 +212,7 @@ export interface Settings {
   auto_update_check: boolean;
   alerts_enabled: boolean;
   alert_days: number;
+  stale_days: number;
   data_dir: string;
   version: string;
 }
@@ -405,7 +406,7 @@ export interface GoalRow {
 
 export interface AlertItem {
   key: string;
-  kind: "payment" | "budget" | "goal";
+  kind: "payment" | "budget" | "goal" | "stale";
   severity: "critical" | "warning";
   title: string;
   detail: string;

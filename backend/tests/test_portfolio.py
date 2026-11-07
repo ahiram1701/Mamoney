@@ -166,6 +166,51 @@ def test_search_filters_supported_types(market) -> None:  # type: ignore[no-unty
     assert results[0]["kind"] == SecurityKind.etf
 
 
+def test_search_finds_crypto_whose_ticker_clashes_with_stocks() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        q = request.url.params["q"]
+        if q == "BAT-USD":
+            quotes_ = [
+                {"symbol": "BAT-USD", "quoteType": "CRYPTOCURRENCY", "shortname": "BAT USD"},
+                {"symbol": "BTA-USD", "quoteType": "CRYPTOCURRENCY", "shortname": "Bata USD"},
+            ]
+        else:  # Yahoo trata "BAT" como texto
+            quotes_ = [
+                {"symbol": "BATL", "quoteType": "EQUITY", "longname": "Battalion Oil"},
+                {"symbol": "ABAT", "quoteType": "EQUITY", "longname": "American Battery"},
+                {"symbol": "BTA-USD", "quoteType": "CRYPTOCURRENCY", "shortname": "Bata USD"},
+            ]
+        return httpx.Response(200, json={"quotes": quotes_})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    symbols = [r["symbol"] for r in quotes.search("bat", client)]
+    assert symbols[0] == "BAT-USD"
+    assert symbols.count("BTA-USD") == 1 and "BATL" in symbols
+
+
+def test_search_by_name_with_spaces_makes_a_single_request() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["q"])
+        return httpx.Response(200, json={"quotes": []})
+
+    quotes.search("basic attention", httpx.Client(transport=httpx.MockTransport(handler)))
+    assert calls == ["basic attention"]
+
+
+def test_search_survives_failed_crypto_lookup() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params["q"].endswith("-USD"):
+            return httpx.Response(500)
+        return httpx.Response(
+            200, json={"quotes": [{"symbol": "AAPL", "quoteType": "EQUITY", "longname": "Apple"}]}
+        )
+
+    results = quotes.search("AAPL", httpx.Client(transport=httpx.MockTransport(handler)))
+    assert [r["symbol"] for r in results] == ["AAPL"]
+
+
 def _account(client: TestClient, currency: str = "USD") -> int:
     r = client.post(
         "/api/assets",

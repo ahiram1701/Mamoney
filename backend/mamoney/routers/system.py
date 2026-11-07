@@ -1,7 +1,6 @@
 """Salud, autenticación por PIN, ajustes y respaldos."""
 
 import datetime as dt
-import sqlite3
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -38,6 +37,7 @@ from mamoney.security import (
     make_session_token,
     verify_pin,
 )
+from mamoney.services.backups import backup_database, backup_status
 from mamoney.services.updater import current_version
 from mamoney.settings_store import get_setting, session_secret, set_setting
 
@@ -110,6 +110,7 @@ def read_settings(session: SessionDep) -> dict[str, Any]:
         "auto_update_check": bool(get_setting(session, "auto_update_check")),
         "alerts_enabled": bool(get_setting(session, "alerts_enabled")),
         "alert_days": int(get_setting(session, "alert_days")),
+        "stale_days": int(get_setting(session, "stale_days")),
         "data_dir": str(get_config().data_dir),
         "version": __version__,
     }
@@ -131,6 +132,8 @@ def update_settings(data: SettingsUpdate, session: SessionDep) -> dict[str, Any]
         set_setting(session, "alerts_enabled", data.alerts_enabled)
     if data.alert_days is not None:
         set_setting(session, "alert_days", data.alert_days)
+    if data.stale_days is not None:
+        set_setting(session, "stale_days", data.stale_days)
     return read_settings(session)
 
 
@@ -147,16 +150,9 @@ def update_pin(data: PinUpdate, session: SessionDep) -> dict[str, bool]:
     return {"pin_enabled": bool(data.pin)}
 
 
-def backup_database(destination: Path) -> Path:
-    """Copia consistente de la base con la API de respaldo de SQLite."""
-    source = sqlite3.connect(get_config().db_path)
-    target = sqlite3.connect(destination)
-    try:
-        source.backup(target)
-    finally:
-        target.close()
-        source.close()
-    return destination
+@router.get("/backup/status")
+def read_backup_status() -> dict[str, Any]:
+    return backup_status()
 
 
 @router.get("/backup/db")

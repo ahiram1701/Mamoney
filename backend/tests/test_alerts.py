@@ -68,3 +68,33 @@ def test_each_alert_is_notified_once_and_can_be_disabled(
     assert take_new_alerts(session) == []  # ya notificadas
     client.patch("/api/settings", json={"alerts_enabled": False})
     assert take_new_alerts(session) == []
+
+
+def _asset(client: TestClient, name: str, days_ago: int, **extra: object) -> int:
+    asset_id = int(
+        client.post("/api/assets", json={"name": name, "type": "bank", **extra}).json()["id"]
+    )
+    day = (TODAY - dt.timedelta(days=days_ago)).isoformat()
+    client.post(f"/api/assets/{asset_id}/valuations", json={"date": day, "value": 1000})
+    return asset_id
+
+
+def test_stale_values_are_grouped_in_one_alert(client: TestClient, session: Session) -> None:
+    _asset(client, "Banco", 45)
+    _asset(client, "Depa", 200)
+    _asset(client, "Cartera", 3)  # al día
+    _asset(client, "Viejo", 300, archived=True)
+    stale = [a for a in build_alerts(session) if a["kind"] == "stale"]
+    assert len(stale) == 1
+    assert stale[0]["title"].startswith("2 valores") and stale[0]["link"] == "/patrimonio"
+    assert stale[0]["detail"].startswith("Depa, Banco")  # el más viejo primero
+
+
+def test_stale_threshold_is_configurable(client: TestClient, session: Session) -> None:
+    _asset(client, "Banco", 45)
+    client.patch("/api/settings", json={"stale_days": 60})
+    assert not [a for a in build_alerts(session) if a["kind"] == "stale"]
+    client.patch("/api/settings", json={"stale_days": 30})
+    alert = next(a for a in build_alerts(session) if a["kind"] == "stale")
+    assert alert["title"] == "Banco lleva 45 días sin actualizar"
+    assert client.get("/api/settings").json()["stale_days"] == 30

@@ -1,4 +1,4 @@
-import { AlertTriangle, Bell, CalendarClock, PiggyBank, Target } from "lucide-react";
+import { AlertTriangle, Bell, CalendarClock, History, PiggyBank, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { useAlerts } from "../api/hooks";
@@ -8,9 +8,10 @@ const ICON: Record<AlertItem["kind"], typeof Bell> = {
   payment: CalendarClock,
   budget: PiggyBank,
   goal: Target,
+  stale: History,
 };
 
-/** Pagos por vencer, presupuesto excedido y metas atrasadas, con icono + texto. */
+/** Pagos por vencer, presupuesto excedido, metas atrasadas y valores sin actualizar. */
 export function AlertsBanner() {
   const { data: alerts = [] } = useAlerts();
   if (alerts.length === 0) return null;
@@ -30,7 +31,7 @@ export function AlertsBanner() {
       </h2>
       <ul className="divide-y divide-line">
         {alerts.slice(0, 6).map((a) => {
-          const Icon = ICON[a.kind];
+          const Icon = ICON[a.kind] ?? Bell; // un tipo nuevo del servidor no rompe la vista
           return (
             <li key={a.key}>
               <Link to={a.link} className="flex items-center gap-3 py-2 text-sm hover:underline">

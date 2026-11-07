@@ -53,12 +53,12 @@ y se centran en gastos del día a día. Mamoney está pensado para otra pregunta
 | Módulo | Qué hace |
 |---|---|
 | **Resumen** | Patrimonio neto y su **cambio en el mes**, ingreso, gastos, flujo libre, evolución a 24 meses, **composición**, lo que te queda **este mes**, inversiones, gasto variable contra presupuesto, próximos pagos, **alertas** y metas. |
-| **Patrimonio** | Activos y deudas con historial de valuaciones, variación, liquidez y distribución por tipo, moneda y liquidez. |
+| **Patrimonio** | Activos y deudas con historial de valuaciones, variación, liquidez y distribución por tipo, moneda y liquidez; **aviso cuando un valor lleva más de 30 días sin actualizar**. |
 | **Inversiones** | Acciones y ETFs de EE. UU. y cripto con **precios de mercado automáticos** (Yahoo Finance, respaldo Coinbase): compras, ventas o solo tu saldo, con precio y comisión **en USD o en MXN** (al tipo de cambio de tu bróker); costo promedio, ganancia realizada y no realizada **también en MXN con el efecto del tipo de cambio**, distribución y valuación automática de la cuenta. |
 | **Ingresos** | Fuentes activas y pasivas, cobros con impuestos retenidos, ingreso neto por mes apilado por fuente, esperado vs. real. |
 | **Gastos** | **Este mes:** fijos y variables juntos, pagado contra pendiente, comparación con el mes anterior e historial de 12 meses. **Fijos:** pagos recurrentes de cualquier frecuencia (semanal a anual, incluido bimestral y quincenal), calendario de vencimientos, marcar como pagado y ocultar lo pagado. **Variables y presupuesto:** gastos por categoría, límite mensual con proyección al cierre e **importación de estados de cuenta** CSV/OFX con categorías sugeridas y sin duplicados. |
 | **Análisis** | Cobertura de gastos con ingreso pasivo, colchón de liquidez en meses, tasa de ahorro real, deuda/activos, concentración de ingresos, **metas de ahorro**, rendimiento por activo y proyección de patrimonio con interés compuesto. |
-| **Ajustes** | Tipos de cambio (automáticos y manuales), **publicar en Tailscale con un clic** (con código QR), usuarios permitidos, PIN, alertas, actualizaciones, respaldo `.db` y exportación/importación JSON. |
+| **Ajustes** | Tipos de cambio (automáticos y manuales), **publicar en Tailscale con un clic** (con código QR), usuarios permitidos, PIN, alertas, actualizaciones, **respaldos automáticos diarios**, respaldo `.db` y exportación/importación JSON. |
 
 Además: modo claro y oscuro, diseño responsive, vista de tabla accesible para cada gráfica,
 paleta validada para daltonismo, respaldo con un clic desde el icono de la bandeja,
@@ -116,7 +116,8 @@ HTTPS automático y no lo expone a internet.
 2. Habilita **HTTPS Certificates** en la [consola de DNS de Tailscale](https://login.tailscale.com/admin/dns).
 3. En Mamoney, ve a **Ajustes → Acceso remoto** y pulsa **Publicar en Tailscale**.
 4. Escanea el código QR con el teléfono o abre la dirección `https://<tu-pc>.<tu-tailnet>.ts.net`
-   en cualquier dispositivo de tu tailnet. Puedes agregarla a la pantalla de inicio.
+   en cualquier dispositivo de tu tailnet. En el iPhone, desde Safari: **Compartir → Agregar a
+   pantalla de inicio**, y Mamoney se abre como app, a pantalla completa.
 5. Pulsa **Permitir solo mi cuenta** y, si quieres, activa un PIN.
 
 Para retirarlo, pulsa **Dejar de publicar**. Publicar y retirar solo se puede desde el propio
@@ -160,7 +161,7 @@ El registro de la última instalación queda en `%APPDATA%\Mamoney\updates\updat
 - **La ventana local** se reconoce por conexión loopback, `Host` local y ausencia de cabeceras de proxy, lo
   que también evita ataques de *DNS rebinding*.
 - **PIN** guardado con `scrypt` y sal aleatoria; cambiarlo invalida todas las sesiones remotas.
-- **Respaldos**: copia consistente con la API de respaldo de SQLite, y respaldo automático antes de cada importación.
+- **Respaldos**: copia consistente con la API de respaldo de SQLite; uno automático cada día (se guardan 14) y otro antes de cada importación y actualización.
 
 Consulta [SECURITY.md](SECURITY.md) para reportar vulnerabilidades.
 

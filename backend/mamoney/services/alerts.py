@@ -96,9 +96,51 @@ def build_alerts(session: Session, today: dt.date | None = None) -> list[dict[st
                 }
             )
 
+    stale = stale_assets(snap, int(get_setting(session, "stale_days") or 30))
+    if stale:
+        names = ", ".join(name for _, name, _ in stale[:4])
+        more = f" y {len(stale) - 4} más" if len(stale) > 4 else ""
+        oldest = max(days for _, _, days in stale)
+        ids = "-".join(str(asset_id) for asset_id, _, _ in stale)
+        alerts.append(
+            {
+                "key": f"stale:{ids}:{snap.today:%Y-%m}",
+                "kind": "stale",
+                "severity": "warning",
+                "title": (
+                    f"{stale[0][1]} lleva {oldest} días sin actualizar"
+                    if len(stale) == 1
+                    else f"{len(stale)} valores llevan más de "
+                    f"{int(get_setting(session, 'stale_days') or 30)} días sin actualizar"
+                ),
+                "detail": f"{names}{more}. Registra su valor actual en Patrimonio.",
+                "link": "/patrimonio",
+            }
+        )
+
     severity = {"critical": 0, "warning": 1}
     alerts.sort(key=lambda a: (severity[a["severity"]], a["kind"]))
     return alerts
+
+
+def stale_assets(snap: an.Snapshot, max_days: int) -> list[tuple[int, str, int]]:
+    """Activos y deudas capturados a mano cuyo último valor tiene más de `max_days` días.
+
+    Las cuentas con posiciones se valúan solas y no cuentan. Devuelve (id, nombre, días),
+    del más viejo al más reciente.
+    """
+    rows = []
+    for asset in snap.assets:
+        if asset.archived or asset.tracks_positions or asset.id is None:
+            continue
+        vals = snap.valuations.get(asset.id, [])
+        if not vals:
+            continue
+        days = (snap.today - vals[-1].date).days
+        if days > max_days:
+            rows.append((asset.id, asset.name, days))
+    rows.sort(key=lambda r: -r[2])
+    return rows
 
 
 def take_new_alerts(session: Session, today: dt.date | None = None) -> list[dict[str, Any]]:

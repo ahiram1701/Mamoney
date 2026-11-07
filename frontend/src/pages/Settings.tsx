@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, RefreshCw, Upload } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 
@@ -262,8 +262,19 @@ function PreferencesCard() {
   );
 }
 
+interface BackupStatus {
+  folder: string;
+  auto_count: number;
+  auto_keep: number;
+  last_auto: string | null;
+}
+
 function BackupCard() {
   const qc = useQueryClient();
+  const { data: auto } = useQuery({
+    queryKey: ["backup-status"],
+    queryFn: () => api<BackupStatus>("/api/backup/status"),
+  });
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -304,6 +315,17 @@ function BackupCard() {
       title="Respaldo y restauración"
       subtitle="Tus datos viven solo en este equipo: respáldalos seguido."
     >
+      <p className="mb-3 text-sm text-ink-2">
+        {auto?.last_auto
+          ? `Respaldo automático diario: el último fue el ${shortDate(auto.last_auto.slice(0, 10))} a las ${auto.last_auto.slice(11)} (${auto.auto_count} de ${auto.auto_keep} guardados).`
+          : "Mamoney guarda un respaldo automático cada día; el primero se hace al minuto de abrirlo."}
+        {auto && (
+          <span className="block text-xs text-ink-3">
+            En {auto.folder}
+            {"\\"}auto
+          </span>
+        )}
+      </p>
       <div className="flex flex-wrap gap-2">
         <a className="btn" href="/api/backup/db">
           <Download size={14} /> Base de datos (.db)
@@ -413,12 +435,14 @@ function UpdatesCard() {
 function AlertsCard() {
   const { data: settings } = useSettings();
   const [days, setDays] = useState<string | null>(null);
+  const [stale, setStale] = useState<string | null>(null);
   const save = useApiMutation("PATCH", "/api/settings");
   const value = days ?? String(settings?.alert_days ?? 3);
+  const staleValue = stale ?? String(settings?.stale_days ?? 30);
   return (
     <Card
       title="Alertas"
-      subtitle="Pagos por vencer o vencidos, presupuesto excedido y metas atrasadas"
+      subtitle="Pagos por vencer o vencidos, presupuesto excedido, metas atrasadas y valores sin actualizar"
     >
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -440,6 +464,24 @@ function AlertsCard() {
           />
         </Field>
         <button className="btn" onClick={() => save.mutate({ alert_days: Number(value) })}>
+          Guardar
+        </button>
+      </div>
+      <div className="mt-3 flex items-end gap-2">
+        <Field
+          label="Avisar si un valor no se actualiza en (días)"
+          hint="Cuentas, bienes y deudas que capturas a mano"
+        >
+          <input
+            className="input w-24"
+            type="number"
+            min={7}
+            max={365}
+            value={staleValue}
+            onChange={(e) => setStale(e.target.value)}
+          />
+        </Field>
+        <button className="btn" onClick={() => save.mutate({ stale_days: Number(staleValue) })}>
           Guardar
         </button>
       </div>

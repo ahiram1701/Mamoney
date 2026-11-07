@@ -103,6 +103,7 @@ class SettingsUpdate(BaseModel):
     auto_update_check: bool | None = None
     alerts_enabled: bool | None = None
     alert_days: int | None = Field(default=None, ge=0, le=30)
+    stale_days: int | None = Field(default=None, ge=7, le=365)
 
 
 class PinUpdate(BaseModel):

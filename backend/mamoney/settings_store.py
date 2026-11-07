@@ -17,6 +17,7 @@ DEFAULTS: dict[str, Any] = {
     "auto_update_check": True,
     "alerts_enabled": True,
     "alert_days": 3,
+    "stale_days": 30,
     "notified_alerts": {},
 }
 

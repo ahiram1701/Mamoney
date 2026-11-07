@@ -31,6 +31,14 @@ const TYPE_ORDER = Object.keys(ASSET_TYPES);
 const POSITION_TYPES = new Set(["investment", "crypto", "retirement"]);
 const LIQUIDITY_ORDER = Object.keys(LIQUIDITY);
 
+/** Días desde una fecha ISO (AAAA-MM-DD) hasta hoy; 0 si no hay fecha. */
+function daysSince(iso: string | null): number {
+  if (!iso) return 0;
+  const then = new Date(iso + "T00:00");
+  const now = new Date(todayIso() + "T00:00");
+  return Math.round((now.getTime() - then.getTime()) / 86_400_000);
+}
+
 export function AssetsPage() {
   const { data: rows = [] } = useAssetRows();
   const { data: dist } = useDistribution();
@@ -158,6 +166,8 @@ function AssetTable({
   onHistory: (r: AssetRow) => void;
   onEdit: (r: AssetRow) => void;
 }) {
+  const { data: settings } = useSettings();
+  const staleDays = settings?.stale_days ?? 30;
   return (
     <div>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">{title}</h3>
@@ -194,6 +204,16 @@ function AssetTable({
                 </td>
                 <td className="tabular py-2 text-right text-ink-3">
                   {shortDate(r.last_valuation)}
+                  {!r.tracks_positions &&
+                    !r.archived &&
+                    daysSince(r.last_valuation) > staleDays && (
+                      <span
+                        className="block text-xs text-warning"
+                        title="Registra su valor actual para que tu patrimonio esté al día"
+                      >
+                        hace {daysSince(r.last_valuation)} días
+                      </span>
+                    )}
                 </td>
                 <td className="py-2">
                   <div className="flex justify-end gap-1">

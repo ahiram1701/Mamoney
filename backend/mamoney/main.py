@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import logging
+import mimetypes
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
@@ -39,9 +40,13 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("mamoney")
 
+# Windows no conoce la extensión del manifest de la app web; sin su tipo, Safari lo ignora.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+
 FX_REFRESH_SECONDS = 6 * 60 * 60
 UPDATE_CHECK_SECONDS = 6 * 60 * 60
 QUOTES_REFRESH_SECONDS = 30 * 60
+BACKUP_CHECK_SECONDS = 6 * 60 * 60
 
 
 async def _fx_loop() -> None:
@@ -87,6 +92,19 @@ async def _update_loop() -> None:
         await asyncio.sleep(UPDATE_CHECK_SECONDS)
 
 
+async def _backup_loop() -> None:
+    """Respaldo diario: revisa cada 6 h si ya existe el de hoy (la PC puede no apagarse)."""
+    from mamoney.services.backups import auto_backup
+
+    await asyncio.sleep(60)  # no competir con el arranque
+    while True:
+        try:
+            await asyncio.to_thread(auto_backup)
+        except Exception:
+            log.exception("Fallo el respaldo automático")
+        await asyncio.sleep(BACKUP_CHECK_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_db()
@@ -98,6 +116,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(_update_loop()))
     if cfg.quotes_auto_update:
         tasks.append(asyncio.create_task(_quotes_loop()))
+    if cfg.auto_backup:
+        tasks.append(asyncio.create_task(_backup_loop()))
     yield
     for task in tasks:
         task.cancel()

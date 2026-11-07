@@ -58,8 +58,8 @@ from PIL import Image, ImageDraw
 
 from mamoney.config import get_config
 from mamoney.main import server_config
-from mamoney.routers.system import backup_database
 from mamoney.services import updater
+from mamoney.services.backups import backup_database
 
 log = logging.getLogger("mamoney.launcher")
 

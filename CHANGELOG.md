@@ -6,6 +6,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Añadido
+
+- **Respaldos automáticos diarios** en `backupsuto` (se guardan los últimos 14). Ajustes →
+  Respaldo muestra cuándo fue el último.
+- **Alerta de valores desactualizados**: avisa cuando una cuenta, bien o deuda que capturas a
+  mano lleva más de 30 días sin actualizar su valor. El plazo se cambia en Ajustes → Alertas.
+  En Patrimonio esos valores se marcan "hace N días".
+- **Mamoney como app en el iPhone**: desde Safari, Compartir → Agregar a pantalla de inicio. Se
+  abre a pantalla completa, con su propio ícono.
+
+### Corregido
+
+- No se encontraban criptos cuyo símbolo coincide con acciones (p. ej. **BAT**, Basic Attention
+  Token): la búsqueda ahora también busca el par en dólares (`BAT-USD`) y pone primero las
+  coincidencias exactas.
+- Se borran las carpetas que dejaban las actualizaciones anteriores.
+
 ## [0.4.1] - 2026-11-02
 
 ### Corregido
