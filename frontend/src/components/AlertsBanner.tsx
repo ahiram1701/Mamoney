@@ -1,4 +1,6 @@
 import { AlertTriangle, Bell, CalendarClock, History, PiggyBank, Target } from "lucide-react";
+import clsx from "clsx";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAlerts } from "../api/hooks";
@@ -12,12 +14,35 @@ const ICON: Record<AlertItem["kind"], typeof Bell> = {
 };
 
 /** Pagos por vencer, presupuesto excedido, metas atrasadas y valores sin actualizar. */
+const EXPANDED_KEY = "mamoney.alerts-expanded";
+
+function readExpanded(): boolean {
+  try {
+    return sessionStorage.getItem(EXPANDED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function AlertsBanner() {
   const { data: alerts = [] } = useAlerts();
+  // En el teléfono solo se ve la primera alerta hasta pulsar "Ver todas".
+  const [expanded, setExpanded] = useState(readExpanded);
+  const toggle = () => {
+    setExpanded(!expanded);
+    try {
+      sessionStorage.setItem(EXPANDED_KEY, expanded ? "0" : "1");
+    } catch {
+      /* sin almacenamiento: solo no se recuerda */
+    }
+  };
   if (alerts.length === 0) return null;
   const critical = alerts.filter((a) => a.severity === "critical").length;
   return (
-    <section aria-label="Alertas" className="mb-4 rounded-xl border border-line bg-surface p-4">
+    <section
+      aria-label="Alertas"
+      className="mb-4 rounded-xl border border-line bg-surface p-3 sm:p-4"
+    >
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
         <AlertTriangle
           size={16}
@@ -30,10 +55,10 @@ export function AlertsBanner() {
         )}
       </h2>
       <ul className="divide-y divide-line">
-        {alerts.slice(0, 6).map((a) => {
+        {alerts.slice(0, 6).map((a, i) => {
           const Icon = ICON[a.kind] ?? Bell; // un tipo nuevo del servidor no rompe la vista
           return (
-            <li key={a.key}>
+            <li key={a.key} className={i > 0 && !expanded ? "hidden sm:block" : undefined}>
               <Link to={a.link} className="flex items-center gap-3 py-2 text-sm hover:underline">
                 <Icon
                   size={16}
@@ -50,7 +75,20 @@ export function AlertsBanner() {
           );
         })}
       </ul>
-      {alerts.length > 6 && <p className="mt-1 text-xs text-ink-3">y {alerts.length - 6} más</p>}
+      {alerts.length > 1 && (
+        <button
+          className="btn btn-sm mt-2 w-full justify-center sm:hidden"
+          onClick={toggle}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Ver menos" : `Ver todas (${alerts.length})`}
+        </button>
+      )}
+      {alerts.length > 6 && (
+        <p className={clsx("mt-1 text-xs text-ink-3", !expanded && "hidden sm:block")}>
+          y {alerts.length - 6} más
+        </p>
+      )}
     </section>
   );
 }

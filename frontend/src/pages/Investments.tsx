@@ -311,56 +311,87 @@ export function InvestmentsPage() {
         {trades.length === 0 ? (
           <EmptyState title="Sin operaciones" />
         ) : (
-          <div className="max-h-[480px] overflow-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-ink-3">
-                  <th className="py-2 font-medium">Fecha</th>
-                  <th className="py-2 font-medium">Operación</th>
-                  <th className="py-2 text-right font-medium">Títulos</th>
-                  <th className="py-2 text-right font-medium">Precio</th>
-                  <th className="py-2 text-right font-medium">Total</th>
-                  <th className="py-2 font-medium">Cuenta</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {trades.map((t) => (
-                  <tr key={t.id} className="border-b border-line">
-                    <td className="tabular py-2 text-ink-3">{shortDate(t.date)}</td>
-                    <td className="py-2">
-                      <span className={SIDE[t.side].className}>{SIDE[t.side].label}</span>{" "}
-                      <strong>{t.symbol}</strong>
-                    </td>
-                    <td className="tabular py-2 text-right">{number(t.quantity, 8)}</td>
-                    <td className="tabular py-2 text-right">
-                      {money(t.price, t.currency)}
-                      {t.fx_rate ? (
-                        <span className="block text-xs text-ink-3">
-                          TC {number(t.fx_rate, 4)} {t.currency}/{t.security_currency}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="tabular py-2 text-right font-medium">
-                      {money(t.total, t.currency)}
-                    </td>
-                    <td className="py-2 text-ink-2">{t.account}</td>
-                    <td className="py-2 text-right">
-                      <button
-                        className="btn btn-sm btn-danger"
-                        aria-label="Eliminar operación"
-                        onClick={() =>
-                          confirm("¿Eliminar esta operación?") && removeTrade.mutate({ id: t.id })
-                        }
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
+          <>
+            {/* Teléfono: tarjetas en lugar de la tabla ancha. */}
+            <ul className="max-h-[480px] divide-y divide-line overflow-auto md:hidden">
+              {trades.map((t) => (
+                <li key={t.id} className="flex items-center gap-3 py-2.5 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 truncate">
+                        <span className={SIDE[t.side].className}>{SIDE[t.side].label}</span>{" "}
+                        <strong>{t.symbol}</strong>
+                      </p>
+                      <p className="tabular shrink-0 font-medium">{money(t.total, t.currency)}</p>
+                    </div>
+                    <p className="tabular mt-0.5 truncate text-xs text-ink-3">
+                      {shortDate(t.date)} · {number(t.quantity, 8)} × {money(t.price, t.currency)}
+                      {t.fx_rate ? ` · TC ${number(t.fx_rate, 2)}` : ""} · {t.account}
+                    </p>
+                  </div>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    aria-label="Eliminar operación"
+                    onClick={() =>
+                      confirm("¿Eliminar esta operación?") && removeTrade.mutate({ id: t.id })
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden max-h-[480px] overflow-auto md:block">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-ink-3">
+                    <th className="py-2 font-medium">Fecha</th>
+                    <th className="py-2 font-medium">Operación</th>
+                    <th className="py-2 text-right font-medium">Títulos</th>
+                    <th className="py-2 text-right font-medium">Precio</th>
+                    <th className="py-2 text-right font-medium">Total</th>
+                    <th className="py-2 font-medium">Cuenta</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {trades.map((t) => (
+                    <tr key={t.id} className="border-b border-line">
+                      <td className="tabular py-2 text-ink-3">{shortDate(t.date)}</td>
+                      <td className="py-2">
+                        <span className={SIDE[t.side].className}>{SIDE[t.side].label}</span>{" "}
+                        <strong>{t.symbol}</strong>
+                      </td>
+                      <td className="tabular py-2 text-right">{number(t.quantity, 8)}</td>
+                      <td className="tabular py-2 text-right">
+                        {money(t.price, t.currency)}
+                        {t.fx_rate ? (
+                          <span className="block text-xs text-ink-3">
+                            TC {number(t.fx_rate, 4)} {t.currency}/{t.security_currency}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="tabular py-2 text-right font-medium">
+                        {money(t.total, t.currency)}
+                      </td>
+                      <td className="py-2 text-ink-2">{t.account}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          className="btn btn-sm btn-danger"
+                          aria-label="Eliminar operación"
+                          onClick={() =>
+                            confirm("¿Eliminar esta operación?") && removeTrade.mutate({ id: t.id })
+                          }
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         <ErrorText error={removeTrade.error} />
         <p className="mt-3 text-xs text-ink-3">

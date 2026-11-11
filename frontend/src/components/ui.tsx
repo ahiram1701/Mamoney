@@ -14,10 +14,10 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-ink-2">{subtitle}</p>}
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-sm text-ink-2 sm:mt-1">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -65,18 +65,21 @@ export function StatTile({
   tone?: "neutral" | "good" | "critical";
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-3">{label}</p>
+    <div className="min-w-0 rounded-xl border border-line bg-surface p-3 sm:p-4">
+      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-ink-3 sm:text-xs">
+        {label}
+      </p>
       <p
         className={clsx(
-          "tabular mt-1 text-xl font-semibold sm:text-2xl",
+          "tabular mt-1 truncate text-[15px] font-semibold min-[360px]:text-lg sm:text-2xl",
           tone === "good" && "text-good",
           tone === "critical" && "text-critical",
         )}
+        title={value}
       >
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-ink-2">{hint}</p>}
+      {hint && <p className="mt-1 line-clamp-2 text-[11px] text-ink-2 sm:text-xs">{hint}</p>}
     </div>
   );
 }
@@ -129,20 +132,24 @@ export function ProgressTile({
   color?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-3">{label}</p>
-      <p className="tabular mt-1 text-xl font-semibold sm:text-2xl">{money(value)}</p>
+    <div className="min-w-0 rounded-xl border border-line bg-surface p-3 sm:p-4">
+      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-ink-3 sm:text-xs">
+        {label}
+      </p>
+      <p className="tabular mt-1 truncate text-[15px] font-semibold min-[360px]:text-lg sm:text-2xl">
+        {money(value)}
+      </p>
       {max ? (
         <>
           <div className="mt-2">
             <ProgressBar value={value} max={max} label={label} color={color} />
           </div>
-          <p className="mt-1 text-xs text-ink-2">
+          <p className="mt-1 line-clamp-2 text-[11px] text-ink-2 sm:text-xs">
             de {money(max)} · {Math.round((value / max) * 100)} %{hint ? ` · ${hint}` : ""}
           </p>
         </>
       ) : (
-        hint && <p className="mt-1 text-xs text-ink-2">{hint}</p>
+        hint && <p className="mt-1 line-clamp-2 text-[11px] text-ink-2 sm:text-xs">{hint}</p>
       )}
     </div>
   );
@@ -182,12 +189,14 @@ export function Modal({
       ref={ref}
       onClose={onClose}
       className={clsx(
-        "m-auto w-[calc(100%-2rem)] rounded-xl border border-line bg-surface p-0 text-ink backdrop:bg-black/40",
-        wide ? "max-w-3xl" : "max-w-lg",
+        // Teléfono: hoja desde abajo a todo el ancho; desde sm, ventana centrada.
+        "mx-0 mt-auto mb-0 max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-2xl border border-line bg-surface p-0 text-ink backdrop:bg-black/40",
+        "sm:m-auto sm:w-[calc(100%-2rem)] sm:rounded-xl",
+        wide ? "sm:max-w-3xl" : "sm:max-w-lg",
       )}
     >
       {open && (
-        <div className="p-5">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button className="btn btn-sm" onClick={onClose} aria-label="Cerrar">

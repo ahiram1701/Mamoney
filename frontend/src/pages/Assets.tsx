@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Archive, History, LineChart, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
@@ -168,10 +169,72 @@ function AssetTable({
 }) {
   const { data: settings } = useSettings();
   const staleDays = settings?.stale_days ?? 30;
+  const change = (r: AssetRow) =>
+    r.change_pct === null
+      ? "—"
+      : `${r.change_pct > 0 ? "▲" : r.change_pct < 0 ? "▼" : ""} ${pct(Math.abs(r.change_pct))}`;
+  const stale = (r: AssetRow) =>
+    !r.tracks_positions &&
+    !r.archived &&
+    daysSince(r.last_valuation) > staleDays && (
+      <span
+        className="block text-xs text-warning"
+        title="Registra su valor actual para que tu patrimonio esté al día"
+      >
+        hace {daysSince(r.last_valuation)} días
+      </span>
+    );
+  const actions = (r: AssetRow) => (
+    <div className="flex justify-end gap-1">
+      {r.tracks_positions ? (
+        <Link className="btn btn-sm" to="/inversiones" title="Valor calculado con tus posiciones">
+          <LineChart size={14} /> Posiciones
+        </Link>
+      ) : (
+        <button className="btn btn-sm" onClick={() => onValue(r)} title="Registrar nuevo valor">
+          <RefreshCw size={14} /> Valor
+        </button>
+      )}
+      <button className="btn btn-sm" onClick={() => onHistory(r)} aria-label="Historial">
+        <History size={14} />
+      </button>
+      <button className="btn btn-sm" onClick={() => onEdit(r)} aria-label="Editar">
+        <Pencil size={14} />
+      </button>
+    </div>
+  );
   return (
     <div>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">{title}</h3>
-      <div className="overflow-x-auto">
+      {/* Teléfono: tarjetas con lo importante a la vista, sin desplazamiento lateral. */}
+      <ul className="divide-y divide-line md:hidden">
+        {rows.map((r) => (
+          <li key={r.id} className={clsx("py-3 text-sm", r.archived && "opacity-50")}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="min-w-0 truncate font-medium">{r.name}</p>
+              <p className="tabular shrink-0 font-semibold">{money(r.value_base)}</p>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between gap-3 text-xs text-ink-3">
+              <p className="min-w-0 truncate">
+                {label(ASSET_TYPES, r.type)}
+                {r.institution ? ` · ${r.institution}` : ""}
+              </p>
+              <p className="tabular shrink-0">
+                {r.currency !== "MXN" && `${money(r.value, r.currency)} · `}
+                {change(r)}
+              </p>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="tabular text-xs text-ink-3">
+                {shortDate(r.last_valuation)}
+                {stale(r)}
+              </p>
+              {actions(r)}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-ink-3">
@@ -197,55 +260,12 @@ function AssetTable({
                 <td className="py-2 text-ink-2">{label(ASSET_TYPES, r.type)}</td>
                 <td className="tabular py-2 text-right">{money(r.value, r.currency)}</td>
                 <td className="tabular py-2 text-right font-medium">{money(r.value_base)}</td>
-                <td className="tabular py-2 text-right text-ink-2">
-                  {r.change_pct === null
-                    ? "—"
-                    : `${r.change_pct > 0 ? "▲" : r.change_pct < 0 ? "▼" : ""} ${pct(Math.abs(r.change_pct))}`}
-                </td>
+                <td className="tabular py-2 text-right text-ink-2">{change(r)}</td>
                 <td className="tabular py-2 text-right text-ink-3">
                   {shortDate(r.last_valuation)}
-                  {!r.tracks_positions &&
-                    !r.archived &&
-                    daysSince(r.last_valuation) > staleDays && (
-                      <span
-                        className="block text-xs text-warning"
-                        title="Registra su valor actual para que tu patrimonio esté al día"
-                      >
-                        hace {daysSince(r.last_valuation)} días
-                      </span>
-                    )}
+                  {stale(r)}
                 </td>
-                <td className="py-2">
-                  <div className="flex justify-end gap-1">
-                    {r.tracks_positions ? (
-                      <Link
-                        className="btn btn-sm"
-                        to="/inversiones"
-                        title="Valor calculado con tus posiciones"
-                      >
-                        <LineChart size={14} /> Posiciones
-                      </Link>
-                    ) : (
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => onValue(r)}
-                        title="Registrar nuevo valor"
-                      >
-                        <RefreshCw size={14} /> Valor
-                      </button>
-                    )}
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => onHistory(r)}
-                      aria-label="Historial"
-                    >
-                      <History size={14} />
-                    </button>
-                    <button className="btn btn-sm" onClick={() => onEdit(r)} aria-label="Editar">
-                      <Pencil size={14} />
-                    </button>
-                  </div>
-                </td>
+                <td className="py-2">{actions(r)}</td>
               </tr>
             ))}
           </tbody>

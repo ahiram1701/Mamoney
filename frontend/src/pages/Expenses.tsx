@@ -347,49 +347,81 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
         {expenses.length === 0 ? (
           <EmptyState title="Aún no registras gastos fijos" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-ink-3">
-                  <th className="py-2 font-medium">Concepto</th>
-                  <th className="py-2 font-medium">Categoría</th>
-                  <th className="py-2 font-medium">Frecuencia</th>
-                  <th className="py-2 text-right font-medium">Monto</th>
-                  <th className="py-2 text-right font-medium">Al mes</th>
-                  <th className="py-2 text-right font-medium">Día</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((e) => (
-                  <tr
-                    key={e.id}
-                    className={
-                      e.active ? "border-b border-line" : "border-b border-line opacity-50"
-                    }
-                  >
-                    <td className="py-2 font-medium">{e.name}</td>
-                    <td className="py-2 text-ink-2">{label(EXPENSE_CATEGORIES, e.category)}</td>
-                    <td className="py-2 text-ink-2">{label(FREQUENCIES, e.frequency)}</td>
-                    <td className="tabular py-2 text-right">{money(e.amount, e.currency)}</td>
-                    <td className="tabular py-2 text-right font-medium">
-                      {money(e.amount * (MONTHLY_FACTOR[e.frequency] ?? 1), e.currency)}
-                    </td>
-                    <td className="tabular py-2 text-right text-ink-3">{e.due_day}</td>
-                    <td className="py-2 text-right">
-                      <button
-                        className="btn btn-sm"
-                        aria-label="Editar"
-                        onClick={() => setEditing(e)}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    </td>
+          <>
+            {/* Teléfono: tarjetas en lugar de la tabla ancha. */}
+            <ul className="divide-y divide-line md:hidden">
+              {expenses.map((e) => (
+                <li
+                  key={e.id}
+                  className={
+                    e.active
+                      ? "flex items-center gap-3 py-3 text-sm"
+                      : "flex items-center gap-3 py-3 text-sm opacity-50"
+                  }
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 truncate font-medium">{e.name}</p>
+                      <p className="tabular shrink-0 font-semibold">
+                        {money(e.amount * (MONTHLY_FACTOR[e.frequency] ?? 1), e.currency)}
+                        <span className="text-xs font-normal text-ink-3">/mes</span>
+                      </p>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-ink-3">
+                      {label(EXPENSE_CATEGORIES, e.category)} ·{" "}
+                      {label(FREQUENCIES, e.frequency).toLowerCase()} · día {e.due_day}
+                    </p>
+                  </div>
+                  <button className="btn btn-sm" aria-label="Editar" onClick={() => setEditing(e)}>
+                    <Pencil size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-ink-3">
+                    <th className="py-2 font-medium">Concepto</th>
+                    <th className="py-2 font-medium">Categoría</th>
+                    <th className="py-2 font-medium">Frecuencia</th>
+                    <th className="py-2 text-right font-medium">Monto</th>
+                    <th className="py-2 text-right font-medium">Al mes</th>
+                    <th className="py-2 text-right font-medium">Día</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {expenses.map((e) => (
+                    <tr
+                      key={e.id}
+                      className={
+                        e.active ? "border-b border-line" : "border-b border-line opacity-50"
+                      }
+                    >
+                      <td className="py-2 font-medium">{e.name}</td>
+                      <td className="py-2 text-ink-2">{label(EXPENSE_CATEGORIES, e.category)}</td>
+                      <td className="py-2 text-ink-2">{label(FREQUENCIES, e.frequency)}</td>
+                      <td className="tabular py-2 text-right">{money(e.amount, e.currency)}</td>
+                      <td className="tabular py-2 text-right font-medium">
+                        {money(e.amount * (MONTHLY_FACTOR[e.frequency] ?? 1), e.currency)}
+                      </td>
+                      <td className="tabular py-2 text-right text-ink-3">{e.due_day}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          className="btn btn-sm"
+                          aria-label="Editar"
+                          onClick={() => setEditing(e)}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
 

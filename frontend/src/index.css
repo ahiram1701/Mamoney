@@ -127,7 +127,13 @@ body {
     background: var(--surface);
     color: var(--text);
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    /* 16 px en el teléfono: con menos, Safari hace zoom al tocar el campo. */
+    font-size: 1rem;
+  }
+  @media (min-width: 640px) {
+    .input {
+      font-size: 0.875rem;
+    }
   }
   .input:focus {
     outline: 2px solid var(--accent);

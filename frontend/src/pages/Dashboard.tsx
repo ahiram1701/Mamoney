@@ -55,7 +55,7 @@ function changeHint(s: Summary | undefined): string | undefined {
   const up = s.net_worth_change >= 0;
   const pctText =
     s.net_worth_change_pct != null ? ` (${pct(Math.abs(s.net_worth_change_pct))})` : "";
-  return `${up ? "▲" : "▼"} ${money(Math.abs(s.net_worth_change))}${pctText} este mes`;
+  return `${up ? "▲" : "▼"} ${money(Math.abs(s.net_worth_change), "MXN", true)}${pctText} en el mes`;
 }
 
 export function DashboardPage() {
@@ -90,7 +90,7 @@ export function DashboardPage() {
           value={money(s ? s.monthly_fixed_expenses + s.monthly_variable_spending : undefined)}
           hint={
             s
-              ? `${money(s.monthly_fixed_expenses, "MXN", true)} fijos · ${money(s.monthly_variable_spending, "MXN", true)} variables${s.variable_spending_days && s.variable_spending_days < 60 ? ` (ritmo de ${s.variable_spending_days} días)` : ""}`
+              ? `${money(s.monthly_fixed_expenses, "MXN", true)} fijos + ${money(s.monthly_variable_spending, "MXN", true)} var.${s.variable_spending_days && s.variable_spending_days < 60 ? ` (${s.variable_spending_days} días)` : ""}`
               : undefined
           }
         />

@@ -66,7 +66,7 @@ function FxCard() {
             <th className="py-1.5 font-medium">Moneda</th>
             <th className="py-1.5 text-right font-medium">MXN</th>
             <th className="py-1.5 text-right font-medium">Fecha</th>
-            <th className="py-1.5 text-right font-medium">Fuente</th>
+            <th className="hidden py-1.5 text-right font-medium sm:table-cell">Fuente</th>
           </tr>
         </thead>
         <tbody>
@@ -81,7 +81,7 @@ function FxCard() {
                 )}
               </td>
               <td className="tabular py-1.5 text-right text-ink-3">{shortDate(r.date)}</td>
-              <td className="py-1.5 text-right text-ink-3">
+              <td className="hidden py-1.5 text-right text-ink-3 sm:table-cell">
                 {r.source === "manual" ? "Manual" : (r.source ?? "—")}
               </td>
             </tr>

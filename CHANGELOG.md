@@ -6,7 +6,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Cambiado
+
+- **Diseño en el teléfono**:
+  - barra inferior con nombres cortos que ya no se enciman (Inicio, Bienes, Invers.…);
+  - encabezado y títulos más compactos;
+  - alertas plegables ("Ver todas");
+  - mosaicos más compactos;
+  - Patrimonio, gastos fijos y operaciones como tarjetas en lugar de tablas anchas;
+  - los formularios se abren como hoja desde abajo.
+  Todo cabe sin desplazamiento lateral desde 320 px de ancho.
+
 ### Corregido
+
+- En el iPhone, Safari ya no hace zoom al tocar un campo de texto.
 
 - **Ingreso mensual subestimado**: cada fuente se promediaba desde el primer cobro de *cualquier*
   fuente y contando el mes en curso, así que un sueldo que empezó hace poco salía muy por debajo
