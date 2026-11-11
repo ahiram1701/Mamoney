@@ -1,3 +1,5 @@
+import datetime as dt
+
 from fastapi.testclient import TestClient
 
 
@@ -42,14 +44,15 @@ def test_income_entries_and_summary(client: TestClient) -> None:
     ).json()
     entry = client.post(
         f"/api/income/sources/{source['id']}/entries",
-        json={"date": "2026-01-15", "gross_amount": 25_000, "tax_withheld": 2_500},
+        json={"date": dt.date.today().isoformat(), "gross_amount": 25_000, "tax_withheld": 2_500},
     ).json()
     assert entry["net_amount"] == 22_500
     assert len(client.get("/api/income/entries", params={"source_id": source["id"]}).json()) == 1
 
     summary = client.get("/api/analytics/summary").json()
     assert summary["base_currency"] == "MXN"
-    assert summary["monthly_income"] > 0
+    # Sin un mes completo de historia todavía se proyecta con lo esperado.
+    assert summary["monthly_income"] == 20_000
 
 
 def test_expense_payments_reject_duplicates(client: TestClient) -> None:

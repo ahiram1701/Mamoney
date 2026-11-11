@@ -138,10 +138,11 @@ def test_summary_metrics() -> None:
     s = an.summary(_snapshot())
     fixed = 15_000 + 600 + 15 * 20
     assert s["monthly_fixed_expenses"] == fixed
-    # Sueldo: 50 000 netos al mes observados; renta: 12 000 en 6 meses observados.
-    assert s["monthly_income"] == pytest.approx(50_000 + 2_000)
-    assert s["passive_monthly_income"] == pytest.approx(2_000)
-    assert s["passive_coverage_pct"] == pytest.approx(round(2_000 / fixed * 100, 2))
+    # Sueldo: 50 000 netos en cada mes completo (feb-may). Renta: un solo cobro este mes, sin
+    # mes completo aún, así que se usa lo esperado (12 000), no 12 000 repartido en 6 meses.
+    assert s["monthly_income"] == pytest.approx(50_000 + 12_000)
+    assert s["passive_monthly_income"] == pytest.approx(12_000)
+    assert s["passive_coverage_pct"] == pytest.approx(round(12_000 / fixed * 100, 2))
     assert s["liquid_assets"] == 100_000 + 220_000
     assert s["runway_months"] == pytest.approx(round(320_000 / fixed, 2))
     assert s["income_this_month"] == 62_000
@@ -253,3 +254,79 @@ def test_expense_endpoints(client) -> None:  # type: ignore[no-untyped-def]
     assert month["month"] == "2026-03" and month["total"] == 0
     assert len(client.get("/api/analytics/expenses/history").json()) == 12
     assert "month_flow" in client.get("/api/analytics/summary").json()
+
+
+def _income_snap(sources: list[IncomeSource], entries: list[IncomeEntry]) -> an.Snapshot:
+    fx = FxTable([FxRate(currency="USD", date=date(2026, 1, 1), rate_to_base=20.0)], base="MXN")
+    return an.Snapshot([], {}, sources, entries, [], [], fx, date(2026, 11, 10))
+
+
+def test_income_estimate_for_new_sources_uses_expected() -> None:
+    sources = [
+        IncomeSource(
+            id=1,
+            name="Sueldo",
+            type=IncomeType.salary,
+            frequency=Frequency.biweekly,
+            expected_amount=4_580.55,
+        ),
+        IncomeSource(
+            id=2,
+            name="Aguinaldo",
+            type=IncomeType.salary,
+            frequency=Frequency.annual,
+            expected_amount=1_731.31,
+        ),
+        IncomeSource(
+            id=3,
+            name="Dividendo",
+            type=IncomeType.dividends,
+            is_passive=True,
+            currency="USD",
+            frequency=Frequency.once,
+            expected_amount=0.03,
+        ),
+    ]
+    entries = [
+        IncomeEntry(id=1, source_id=1, date=date(2026, 10, 14), gross_amount=2_801.19),
+        IncomeEntry(id=2, source_id=1, date=date(2026, 10, 29), gross_amount=4_580.55),
+        IncomeEntry(id=3, source_id=2, date=date(2026, 11, 9), gross_amount=1_731.31),
+        IncomeEntry(id=4, source_id=3, date=date(2026, 9, 24), gross_amount=0.03),
+    ]
+    rows = {r["name"]: r for r in an.income_sources_summary(_income_snap(sources, entries))}
+    # El sueldo empezó a medio octubre y noviembre no ha terminado: sin mes completo, lo esperado.
+    assert rows["Sueldo"]["actual_monthly_base"] is None
+    assert rows["Sueldo"]["monthly_estimate_base"] == pytest.approx(9_161.10)
+    # Un aguinaldo cobrado hace un día no son 577 al mes: se usa 1/12 de lo esperado.
+    assert rows["Aguinaldo"]["monthly_estimate_base"] == pytest.approx(144.28)
+    # Un pago único no es ingreso mensual.
+    assert rows["Dividendo"]["monthly_estimate_base"] == 0
+    s = an.summary(_income_snap(sources, entries))
+    assert s["monthly_income"] == pytest.approx(9_161.10 + 144.28)
+
+
+def test_income_average_uses_complete_months_after_the_first() -> None:
+    source = IncomeSource(
+        id=1, name="Sueldo", type=IncomeType.salary, frequency=Frequency.monthly, expected_amount=1
+    )
+    entries = [
+        IncomeEntry(id=1, source_id=1, date=date(2026, 7, 20), gross_amount=3_000),  # parcial
+        IncomeEntry(id=2, source_id=1, date=date(2026, 8, 30), gross_amount=10_000),
+        IncomeEntry(id=3, source_id=1, date=date(2026, 9, 30), gross_amount=10_000),
+        IncomeEntry(id=4, source_id=1, date=date(2026, 10, 30), gross_amount=12_000),
+        IncomeEntry(id=5, source_id=1, date=date(2026, 11, 5), gross_amount=99_999),  # en curso
+    ]
+    row = an.income_sources_summary(_income_snap([source], entries))[0]
+    assert row["actual_monthly_base"] == pytest.approx((10_000 + 10_000 + 12_000) / 3)
+
+
+def test_annual_income_with_a_year_of_history_is_averaged() -> None:
+    source = IncomeSource(
+        id=1, name="Bono", type=IncomeType.salary, frequency=Frequency.annual, expected_amount=1
+    )
+    entries = [
+        IncomeEntry(id=1, source_id=1, date=date(2025, 6, 1), gross_amount=12_000),  # > 12 meses
+        IncomeEntry(id=2, source_id=1, date=date(2026, 6, 1), gross_amount=24_000),
+    ]
+    row = an.income_sources_summary(_income_snap([source], entries))[0]
+    assert row["actual_monthly_base"] == pytest.approx(2_000)

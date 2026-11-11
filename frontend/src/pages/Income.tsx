@@ -66,8 +66,8 @@ export function IncomePage() {
   const sourceName = new Map(sources.map((s) => [s.id, s]));
 
   const expected = rows.filter((r) => r.active).reduce((s, r) => s + r.expected_monthly_base, 0);
-  const actual = rows.reduce((s, r) => s + r.actual_monthly_base, 0);
-  const passive = rows.filter((r) => r.is_passive).reduce((s, r) => s + r.actual_monthly_base, 0);
+  const estimate = rows.reduce((s, r) => s + r.monthly_estimate_base, 0);
+  const passive = rows.filter((r) => r.is_passive).reduce((s, r) => s + r.monthly_estimate_base, 0);
 
   return (
     <>
@@ -83,11 +83,15 @@ export function IncomePage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Esperado / mes" value={money(expected)} />
-        <StatTile label="Real / mes (prom. 12 m)" value={money(actual)} />
+        <StatTile
+          label="Estimado / mes"
+          value={money(estimate)}
+          hint="Real donde ya hay un mes completo; si no, lo esperado"
+        />
         <StatTile
           label="Pasivo / mes"
           value={money(passive)}
-          hint={actual ? `${pct((passive / actual) * 100, 0)} del total` : undefined}
+          hint={estimate ? `${pct((passive / estimate) * 100, 0)} del total` : undefined}
         />
         <StatTile label="Fuentes activas" value={String(rows.filter((r) => r.active).length)} />
       </div>
@@ -142,9 +146,10 @@ export function IncomePage() {
             <ul className="divide-y divide-line">
               {rows.map((r) => {
                 const source = sourceName.get(r.id);
-                const gap = r.expected_monthly_base
-                  ? (r.actual_monthly_base / r.expected_monthly_base) * 100
-                  : null;
+                const gap =
+                  r.expected_monthly_base && r.actual_monthly_base !== null
+                    ? (r.actual_monthly_base / r.expected_monthly_base) * 100
+                    : null;
                 return (
                   <li key={r.id} className={r.active ? "py-3" : "py-3 opacity-50"}>
                     <div className="flex flex-wrap items-center gap-2">
@@ -179,9 +184,17 @@ export function IncomePage() {
                     </div>
                     <p className="tabular mt-1 text-xs text-ink-3">
                       Esperado (bruto) {money(r.expected_amount, r.currency)}{" "}
-                      {label(FREQUENCIES, r.frequency).toLowerCase()} · real neto{" "}
-                      {money(r.actual_monthly_base)}/mes
-                      {gap !== null && ` (${pct(gap, 0)} de lo esperado)`}
+                      {label(FREQUENCIES, r.frequency).toLowerCase()} ·{" "}
+                      {r.actual_monthly_base !== null ? (
+                        <>
+                          real neto {money(r.actual_monthly_base)}/mes
+                          {gap !== null && ` (${pct(gap, 0)} de lo esperado)`}
+                        </>
+                      ) : r.frequency === "once" ? (
+                        "pago único: no cuenta como ingreso mensual"
+                      ) : (
+                        "aún sin historia suficiente para un promedio real"
+                      )}
                     </p>
                   </li>
                 );

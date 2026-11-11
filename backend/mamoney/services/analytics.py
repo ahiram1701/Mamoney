@@ -12,6 +12,7 @@ from mamoney.models import (
     AssetValuation,
     ExpensePayment,
     FixedExpense,
+    Frequency,
     Goal,
     IncomeEntry,
     IncomeSource,
@@ -197,32 +198,60 @@ def income_by_month(snap: Snapshot, months: int = 12) -> list[Row]:
     return result
 
 
-def _trailing_income(snap: Snapshot, months: int = 12) -> dict[int, float]:
-    """Ingreso neto promedio mensual por fuente en los últimos `months` meses."""
-    sources = {s.id: s for s in snap.sources}
-    year, month = add_months(snap.today.year, snap.today.month, -(months - 1))
-    since = date(year, month, 1)
-    totals: dict[int, float] = defaultdict(float)
-    for entry in snap.entries:
-        source = sources.get(entry.source_id)
-        if source is None or entry.date < since or entry.date > snap.today:
-            continue
-        totals[entry.source_id] += _entry_base(snap, entry, source)
-    # Meses observados: desde la primera entrada (o el inicio de la ventana) hasta hoy.
-    first_entry = min((e.date for e in snap.entries if e.date >= since), default=snap.today)
-    observed = max(
-        1, (snap.today.year - first_entry.year) * 12 + snap.today.month - first_entry.month + 1
+# Fuentes que se cobran pocas veces al año: su promedio necesita un año completo de historia.
+INFREQUENT = {
+    Frequency.bimonthly,
+    Frequency.quarterly,
+    Frequency.semiannual,
+    Frequency.annual,
+}
+
+
+def _source_actual(snap: Snapshot, source: IncomeSource, months: int = 12) -> float | None:
+    """Ingreso neto mensual real de una fuente, o None si aún no hay historia suficiente.
+
+    - Pago único: no es ingreso recurrente (None).
+    - Bimestral a anual: lo cobrado en los últimos 12 meses / 12, solo si la fuente lleva un
+      año registrándose (un aguinaldo de hace un mes no son 1/2 aguinaldo al mes).
+    - Semanal a mensual: promedio de los meses completos desde que empezó la fuente. El mes del
+      primer cobro (suele ser parcial) y el mes en curso (aún sin terminar) no cuentan.
+    """
+    if source.frequency == Frequency.once:
+        return None
+    entries = [e for e in snap.entries if e.source_id == source.id and e.date <= snap.today]
+    if not entries:
+        return None
+    first = min(e.date for e in entries)
+    if source.frequency in INFREQUENT:
+        since = date(snap.today.year - 1, snap.today.month, 1)
+        if first > snap.today - timedelta(days=365):
+            return None
+        total = sum(_entry_base(snap, e, source) for e in entries if e.date >= since)
+        return total / 12
+    window_start = add_months(snap.today.year, snap.today.month, -months)
+    complete = [
+        key
+        for key in last_n_months(snap.today, months + 1)[:-1]  # sin el mes en curso
+        if key > (first.year, first.month) and key >= window_start
+    ]
+    if not complete:
+        return None
+    keys = set(complete)
+    total = sum(
+        _entry_base(snap, e, source) for e in entries if (e.date.year, e.date.month) in keys
     )
-    return {sid: total / min(observed, months) for sid, total in totals.items()}
+    return total / len(complete)
 
 
 def income_sources_summary(snap: Snapshot) -> list[Row]:
-    trailing = _trailing_income(snap)
     rows = []
     for s in snap.sources:
         expected = snap.to_base(
             monthly_amount(s.expected_amount, s.frequency), s.currency, snap.today
         )
+        actual = _source_actual(snap, s)
+        # Lo que se usa para proyectar: lo real si ya hay historia; si no, lo esperado.
+        estimate = 0.0 if not s.active else (actual if actual is not None else expected)
         rows.append(
             {
                 "id": s.id,
@@ -234,7 +263,8 @@ def income_sources_summary(snap: Snapshot) -> list[Row]:
                 "frequency": s.frequency,
                 "expected_amount": s.expected_amount,
                 "expected_monthly_base": _r(expected if s.active else 0),
-                "actual_monthly_base": _r(trailing.get(s.id or -1, 0.0)),
+                "actual_monthly_base": _r(actual) if actual is not None else None,
+                "monthly_estimate_base": _r(estimate),
             }
         )
     return rows
@@ -301,12 +331,8 @@ def summary(snap: Snapshot) -> Row:
     sources = income_sources_summary(snap)
     fixed = monthly_fixed_expenses(snap)
 
-    def best(row: Row) -> float:
-        actual = float(row["actual_monthly_base"])
-        return actual if actual > 0 else float(row["expected_monthly_base"])
-
-    monthly_income = sum(best(r) for r in sources if r["active"])
-    passive_income = sum(best(r) for r in sources if r["active"] and r["is_passive"])
+    monthly_income = sum(float(r["monthly_estimate_base"]) for r in sources)
+    passive_income = sum(float(r["monthly_estimate_base"]) for r in sources if r["is_passive"])
     variable = monthly_variable_spending(snap)
     free_cash_flow = monthly_income - fixed - variable
 
@@ -328,11 +354,8 @@ def summary(snap: Snapshot) -> Row:
         (m["total"] for m in income_by_month(snap, 1) if m["month"] == month_key), 0.0
     )
 
-    totals_12m: dict[str, float] = defaultdict(float)
-    for row in sources:
-        totals_12m[row["name"]] += float(row["actual_monthly_base"])
-    total_actual = sum(totals_12m.values())
-    concentration = max(totals_12m.values()) / total_actual * 100 if total_actual else None
+    estimates = [float(r["monthly_estimate_base"]) for r in sources]
+    concentration = max(estimates) / monthly_income * 100 if monthly_income > 0 else None
 
     def ratio(a: float, b: float, scale: float = 1.0) -> float | None:
         return _r(a / b * scale) if b else None
@@ -352,6 +375,7 @@ def summary(snap: Snapshot) -> Row:
         "income_this_month": this_month,
         "monthly_fixed_expenses": _r(fixed),
         "monthly_variable_spending": _r(variable),
+        "variable_spending_days": variable_spending_days(snap),
         "free_cash_flow": _r(free_cash_flow),
         "savings_rate_pct": ratio(free_cash_flow, monthly_income, 100),
         "passive_coverage_pct": ratio(passive_income, fixed, 100),
@@ -456,24 +480,36 @@ def spending_totals(snap: Snapshot, year: int, month: int) -> dict[str, float]:
     return totals
 
 
-def monthly_variable_spending(snap: Snapshot, months: int = 3) -> float:
-    """Promedio mensual de gasto variable de los últimos `months` meses completos.
+MIN_SPENDING_DAYS = 14
+DAYS_PER_MONTH = 30.4375
 
-    Si aún no hay un mes completo con datos, usa el mes en curso proyectado a 30 días.
+
+def variable_spending_days(snap: Snapshot, months: int = 3) -> int:
+    """Días de historia con los que se mide el ritmo de gasto variable (0 si no hay gastos)."""
+    past = [s.date for s in snap.spendings if s.date <= snap.today]
+    if not past:
+        return 0
+    y, m = add_months(snap.today.year, snap.today.month, -months)
+    start = max(min(past), clamp_day(y, m, snap.today.day) + timedelta(days=1))
+    return (snap.today - start).days + 1
+
+
+def monthly_variable_spending(snap: Snapshot, months: int = 3) -> float:
+    """Ritmo mensual de gasto variable: lo gastado por día desde que registras gastos (máximo
+    los últimos `months` meses), llevado a un mes.
+
+    Se mide por días y no por meses porque el primer mes casi nunca está completo: quien empieza
+    a registrar el día 29 tiene 3 días de gastos en ese mes, no un mes. Con menos de 14 días
+    de historia se divide entre 14 para que un solo gasto grande no se multiplique por 30.
     """
-    if not snap.spendings:
+    past = [s for s in snap.spendings if s.date <= snap.today]
+    if not past:
         return 0.0
-    first = min(s.date for s in snap.spendings)
-    complete = [
-        key
-        for key in last_n_months(snap.today, months + 1)[:-1]  # sin el mes en curso
-        if date(key[0], key[1], 1) >= date(first.year, first.month, 1)
-    ]
-    if complete:
-        total = sum(sum(spending_totals(snap, y, m).values()) for y, m in complete)
-        return total / len(complete)
-    current = sum(spending_totals(snap, snap.today.year, snap.today.month).values())
-    return current / max(snap.today.day, 1) * 30
+    y, m = add_months(snap.today.year, snap.today.month, -months)
+    start = max(min(s.date for s in past), clamp_day(y, m, snap.today.day) + timedelta(days=1))
+    total = sum(snap.to_base(s.amount, s.currency, s.date) for s in past if s.date >= start)
+    days = max((snap.today - start).days + 1, MIN_SPENDING_DAYS)
+    return total / days * DAYS_PER_MONTH
 
 
 def budget_report(snap: Snapshot, limits: dict[str, float], year: int, month: int) -> Row:

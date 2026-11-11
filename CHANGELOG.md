@@ -6,6 +6,21 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Corregido
+
+- **Ingreso mensual subestimado**: cada fuente se promediaba desde el primer cobro de *cualquier*
+  fuente y contando el mes en curso, así que un sueldo que empezó hace poco salía muy por debajo
+  (p. ej. $2,460 en lugar de $9,161). Ahora cada fuente usa sus meses completos; si aún no tiene
+  uno, se proyecta con lo esperado.
+- Un **aguinaldo** u otro ingreso anual recién cobrado ya no se reparte en pocos meses (salía como
+  $577/mes en lugar de $144); se usa 1/12 hasta tener un año de historia. Los **pagos únicos** ya
+  no cuentan como ingreso mensual.
+- **Gasto variable mensual subestimado**: el primer mes contaba como mes completo aunque empezaras
+  a registrar el día 29. Ahora es el ritmo diario de los últimos 3 meses llevado a un mes; con
+  poca historia, Resumen indica de cuántos días sale.
+- Con eso se corrigen el flujo libre, la tasa de ahorro, la cobertura pasiva, la concentración de
+  ingresos, la proyección y el ritmo de las metas, que dependen de esos promedios.
+
 ## [0.5.0] - 2026-11-07
 
 ### Añadido

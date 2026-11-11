@@ -90,7 +90,7 @@ export function DashboardPage() {
           value={money(s ? s.monthly_fixed_expenses + s.monthly_variable_spending : undefined)}
           hint={
             s
-              ? `${money(s.monthly_fixed_expenses, "MXN", true)} fijos · ${money(s.monthly_variable_spending, "MXN", true)} variables`
+              ? `${money(s.monthly_fixed_expenses, "MXN", true)} fijos · ${money(s.monthly_variable_spending, "MXN", true)} variables${s.variable_spending_days && s.variable_spending_days < 60 ? ` (ritmo de ${s.variable_spending_days} días)` : ""}`
               : undefined
           }
         />

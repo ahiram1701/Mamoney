@@ -51,7 +51,10 @@ export interface IncomeSourceRow {
   frequency: Frequency;
   expected_amount: number;
   expected_monthly_base: number;
-  actual_monthly_base: number;
+  /** Promedio real neto; null si aún no hay historia suficiente (o es un pago único). */
+  actual_monthly_base: number | null;
+  /** Lo que se usa para proyectar: lo real si ya hay historia, si no lo esperado. */
+  monthly_estimate_base: number;
 }
 
 export interface IncomeEntry {
@@ -103,6 +106,8 @@ export interface Summary {
   income_this_month: number;
   monthly_fixed_expenses: number;
   monthly_variable_spending: number;
+  /** Días de historia con los que se mide el ritmo de gasto variable. */
+  variable_spending_days: number;
   free_cash_flow: number;
   savings_rate_pct: number | null;
   passive_coverage_pct: number | null;
