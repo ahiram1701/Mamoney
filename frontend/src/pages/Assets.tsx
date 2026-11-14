@@ -13,6 +13,7 @@ import {
 } from "../api/hooks";
 import type { Asset, AssetRow } from "../api/types";
 import { Donut, TimeLineChart } from "../components/charts/Charts";
+import { ListToolbar, NoMatches, SortHeader } from "../components/ListControls";
 import { foldOther, SERIES } from "../components/charts/palette";
 import {
   Card,
@@ -26,6 +27,7 @@ import {
   StatTile,
 } from "../components/ui";
 import { money, pct, shortDate, todayIso } from "../lib/format";
+import { useListControls, type ListControls } from "../lib/listControls";
 import { ASSET_TYPES, LIABILITY_TYPES, LIQUIDITY, label, type AssetType } from "../lib/labels";
 
 const TYPE_ORDER = Object.keys(ASSET_TYPES);
@@ -51,10 +53,28 @@ export function AssetsPage() {
   const { data: assets = [] } = useAssets();
 
   const visible = rows.filter((r) => showArchived || !r.archived);
-  const activeRows = visible.filter((r) => !r.is_liability);
-  const debtRows = visible.filter((r) => r.is_liability);
-  const totalAssets = activeRows.reduce((s, r) => s + r.value_base, 0);
-  const totalDebt = debtRows.reduce((s, r) => s + r.value_base, 0);
+  // Los totales salen de todo lo visible; la búsqueda y el filtro solo recortan la lista.
+  const totalAssets = visible.filter((r) => !r.is_liability).reduce((s, r) => s + r.value_base, 0);
+  const totalDebt = visible.filter((r) => r.is_liability).reduce((s, r) => s + r.value_base, 0);
+  const list = useListControls("assets", visible, {
+    sorts: {
+      name: { label: "Nombre", get: (r) => r.name },
+      type: { label: "Tipo", get: (r) => label(ASSET_TYPES, r.type) },
+      value: { label: "Valor en MXN", get: (r) => r.value_base },
+      change: { label: "Cambio", get: (r) => r.change_pct },
+      updated: { label: "Actualizado", get: (r) => r.last_valuation },
+    },
+    search: (r) => [r.name, r.institution],
+    filter: (r) => r.type,
+  });
+  const activeRows = list.rows.filter((r) => !r.is_liability);
+  const debtRows = list.rows.filter((r) => r.is_liability);
+  const presentTypes = Object.fromEntries(
+    TYPE_ORDER.filter((k) => visible.some((r) => r.type === k)).map((k) => [
+      k,
+      label(ASSET_TYPES, k),
+    ]),
+  );
 
   const distData = dist ? foldOther(dist[view]) : [];
   const distLabels: Record<string, string> =
@@ -100,16 +120,27 @@ export function AssetsPage() {
             </EmptyState>
           ) : (
             <div className="space-y-6">
-              <AssetTable
-                title="Activos"
-                rows={activeRows}
-                onValue={setValuing}
-                onHistory={setHistoryOf}
-                onEdit={(r) => setEditing(assets.find((a) => a.id === r.id) ?? null)}
+              <ListToolbar
+                list={list}
+                placeholder="Buscar por nombre o institución"
+                filterLabel="Tipo"
+                filterOptions={presentTypes}
               />
+              <NoMatches list={list} />
+              {activeRows.length > 0 && (
+                <AssetTable
+                  title="Activos"
+                  list={list}
+                  rows={activeRows}
+                  onValue={setValuing}
+                  onHistory={setHistoryOf}
+                  onEdit={(r) => setEditing(assets.find((a) => a.id === r.id) ?? null)}
+                />
+              )}
               {debtRows.length > 0 && (
                 <AssetTable
                   title="Deudas"
+                  list={list}
                   rows={debtRows}
                   onValue={setValuing}
                   onHistory={setHistoryOf}
@@ -156,12 +187,14 @@ export function AssetsPage() {
 
 function AssetTable({
   title,
+  list,
   rows,
   onValue,
   onHistory,
   onEdit,
 }: {
   title: string;
+  list: ListControls<AssetRow>;
   rows: AssetRow[];
   onValue: (r: AssetRow) => void;
   onHistory: (r: AssetRow) => void;
@@ -238,12 +271,22 @@ function AssetTable({
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-ink-3">
-              <th className="py-2 font-medium">Nombre</th>
-              <th className="py-2 font-medium">Tipo</th>
+              <SortHeader list={list} sortKey="name">
+                Nombre
+              </SortHeader>
+              <SortHeader list={list} sortKey="type">
+                Tipo
+              </SortHeader>
               <th className="py-2 text-right font-medium">Valor</th>
-              <th className="py-2 text-right font-medium">En MXN</th>
-              <th className="py-2 text-right font-medium">Cambio</th>
-              <th className="py-2 text-right font-medium">Actualizado</th>
+              <SortHeader list={list} sortKey="value" align="right">
+                En MXN
+              </SortHeader>
+              <SortHeader list={list} sortKey="change" align="right">
+                Cambio
+              </SortHeader>
+              <SortHeader list={list} sortKey="updated" align="right">
+                Actualizado
+              </SortHeader>
               <th className="py-2" />
             </tr>
           </thead>

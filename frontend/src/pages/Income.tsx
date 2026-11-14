@@ -38,6 +38,8 @@ import {
   label,
   type IncomeType,
 } from "../lib/labels";
+import { ListToolbar, NoMatches, SortHeader } from "../components/ListControls";
+import { useListControls } from "../lib/listControls";
 import { CurrencySelect } from "./Assets";
 
 export function IncomePage() {
@@ -64,6 +66,31 @@ export function IncomePage() {
   );
   const chartData = byMonth.map((m) => ({ month: m.month, ...m.by_source }));
   const sourceName = new Map(sources.map((s) => [s.id, s]));
+
+  const sourceList = useListControls("income-sources", rows, {
+    sorts: {
+      name: { label: "Nombre", get: (r) => r.name },
+      type: { label: "Tipo", get: (r) => label(INCOME_TYPES, r.type) },
+      estimate: { label: "Estimado / mes", get: (r) => r.monthly_estimate_base },
+    },
+    search: (r) => [r.name],
+    filter: (r) => (r.active ? "active" : "inactive"),
+  });
+  const entryList = useListControls("income-entries", entries, {
+    sorts: {
+      date: { label: "Fecha", get: (e) => e.date },
+      source: { label: "Fuente", get: (e) => sourceName.get(e.source_id)?.name },
+      net: { label: "Neto", get: (e) => e.net_amount },
+    },
+    filter: (e) => String(e.source_id),
+  });
+  const entrySources = Object.fromEntries(
+    sources
+      .filter((s) => entries.some((e) => e.source_id === s.id))
+      .map((s) => [String(s.id), s.name]),
+  );
+  // Sin filtro se muestran los 100 más recientes; con filtro, todos los de esa fuente.
+  const shownEntries = entryList.filter ? entryList.rows : entryList.rows.slice(0, 100);
 
   const expected = rows.filter((r) => r.active).reduce((s, r) => s + r.expected_monthly_base, 0);
   const estimate = rows.reduce((s, r) => s + r.monthly_estimate_base, 0);
@@ -143,63 +170,73 @@ export function IncomePage() {
           {rows.length === 0 ? (
             <EmptyState title="Sin fuentes" />
           ) : (
-            <ul className="divide-y divide-line">
-              {rows.map((r) => {
-                const source = sourceName.get(r.id);
-                const gap =
-                  r.expected_monthly_base && r.actual_monthly_base !== null
-                    ? (r.actual_monthly_base / r.expected_monthly_base) * 100
-                    : null;
-                return (
-                  <li key={r.id} className={r.active ? "py-3" : "py-3 opacity-50"}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className="inline-block size-2.5 rounded-sm"
-                        style={{ background: series.find((s) => s.key === r.name)?.color }}
-                      />
-                      <span className="font-medium">{r.name}</span>
-                      <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">
-                        {label(INCOME_TYPES, r.type)}
-                      </span>
-                      {r.is_passive && (
-                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-ink">
-                          Pasivo
+            <>
+              <ListToolbar
+                list={sourceList}
+                placeholder="Buscar fuente"
+                filterLabel="Estado"
+                filterOptions={{ active: "Activas", inactive: "Inactivas" }}
+                alwaysShowSort
+              />
+              <NoMatches list={sourceList} />
+              <ul className="divide-y divide-line">
+                {sourceList.rows.map((r) => {
+                  const source = sourceName.get(r.id);
+                  const gap =
+                    r.expected_monthly_base && r.actual_monthly_base !== null
+                      ? (r.actual_monthly_base / r.expected_monthly_base) * 100
+                      : null;
+                  return (
+                    <li key={r.id} className={r.active ? "py-3" : "py-3 opacity-50"}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="inline-block size-2.5 rounded-sm"
+                          style={{ background: series.find((s) => s.key === r.name)?.color }}
+                        />
+                        <span className="font-medium">{r.name}</span>
+                        <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">
+                          {label(INCOME_TYPES, r.type)}
                         </span>
-                      )}
-                      <div className="ml-auto flex gap-1">
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => source && setEntryFor(source)}
-                        >
-                          <Plus size={14} /> Registrar cobro
-                        </button>
-                        <button
-                          className="btn btn-sm"
-                          aria-label="Editar"
-                          onClick={() => source && setEditing(source)}
-                        >
-                          <Pencil size={14} />
-                        </button>
+                        {r.is_passive && (
+                          <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-ink">
+                            Pasivo
+                          </span>
+                        )}
+                        <div className="ml-auto flex gap-1">
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => source && setEntryFor(source)}
+                          >
+                            <Plus size={14} /> Registrar cobro
+                          </button>
+                          <button
+                            className="btn btn-sm"
+                            aria-label="Editar"
+                            onClick={() => source && setEditing(source)}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <p className="tabular mt-1 text-xs text-ink-3">
-                      Esperado (bruto) {money(r.expected_amount, r.currency)}{" "}
-                      {label(FREQUENCIES, r.frequency).toLowerCase()} ·{" "}
-                      {r.actual_monthly_base !== null ? (
-                        <>
-                          real neto {money(r.actual_monthly_base)}/mes
-                          {gap !== null && ` (${pct(gap, 0)} de lo esperado)`}
-                        </>
-                      ) : r.frequency === "once" ? (
-                        "pago único: no cuenta como ingreso mensual"
-                      ) : (
-                        "aún sin historia suficiente para un promedio real"
-                      )}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
+                      <p className="tabular mt-1 text-xs text-ink-3">
+                        Esperado (bruto) {money(r.expected_amount, r.currency)}{" "}
+                        {label(FREQUENCIES, r.frequency).toLowerCase()} ·{" "}
+                        {r.actual_monthly_base !== null ? (
+                          <>
+                            real neto {money(r.actual_monthly_base)}/mes
+                            {gap !== null && ` (${pct(gap, 0)} de lo esperado)`}
+                          </>
+                        ) : r.frequency === "once" ? (
+                          "pago único: no cuenta como ingreso mensual"
+                        ) : (
+                          "aún sin historia suficiente para un promedio real"
+                        )}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </Card>
 
@@ -207,47 +244,57 @@ export function IncomePage() {
           {entries.length === 0 ? (
             <EmptyState title="Sin cobros" />
           ) : (
-            <div className="max-h-[420px] overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs text-ink-3">
-                    <th className="py-2 font-medium">Fecha</th>
-                    <th className="py-2 font-medium">Fuente</th>
-                    <th className="py-2 text-right font-medium">Bruto</th>
-                    <th className="py-2 text-right font-medium">Neto</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.slice(0, 100).map((e) => {
-                    const s = sourceName.get(e.source_id);
-                    return (
-                      <tr key={e.id} className="border-b border-line">
-                        <td className="tabular py-2 text-ink-3">{shortDate(e.date)}</td>
-                        <td className="py-2">{s?.name}</td>
-                        <td className="tabular py-2 text-right text-ink-2">
-                          {money(e.gross_amount, s?.currency)}
-                        </td>
-                        <td className="tabular py-2 text-right font-medium">
-                          {money(e.net_amount, s?.currency)}
-                        </td>
-                        <td className="py-2 text-right">
-                          <button
-                            className="btn btn-sm btn-danger"
-                            aria-label="Eliminar cobro"
-                            onClick={() =>
-                              confirm("¿Eliminar este cobro?") && remove.mutate({ id: e.id })
-                            }
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <ListToolbar list={entryList} filterLabel="Fuente" filterOptions={entrySources} />
+              <NoMatches list={entryList} />
+              <div className="max-h-[420px] overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-left text-xs text-ink-3">
+                      <SortHeader list={entryList} sortKey="date">
+                        Fecha
+                      </SortHeader>
+                      <SortHeader list={entryList} sortKey="source">
+                        Fuente
+                      </SortHeader>
+                      <th className="py-2 text-right font-medium">Bruto</th>
+                      <SortHeader list={entryList} sortKey="net" align="right">
+                        Neto
+                      </SortHeader>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownEntries.map((e) => {
+                      const s = sourceName.get(e.source_id);
+                      return (
+                        <tr key={e.id} className="border-b border-line">
+                          <td className="tabular py-2 text-ink-3">{shortDate(e.date)}</td>
+                          <td className="py-2">{s?.name}</td>
+                          <td className="tabular py-2 text-right text-ink-2">
+                            {money(e.gross_amount, s?.currency)}
+                          </td>
+                          <td className="tabular py-2 text-right font-medium">
+                            {money(e.net_amount, s?.currency)}
+                          </td>
+                          <td className="py-2 text-right">
+                            <button
+                              className="btn btn-sm btn-danger"
+                              aria-label="Eliminar cobro"
+                              onClick={() =>
+                                confirm("¿Eliminar este cobro?") && remove.mutate({ id: e.id })
+                              }
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
       </div>

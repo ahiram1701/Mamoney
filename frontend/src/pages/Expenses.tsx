@@ -16,6 +16,7 @@ import {
 import type { FixedExpense, UpcomingPayment } from "../api/types";
 import { ChartFrame, DataTable, HBars, Legend, StackedBars } from "../components/charts/Charts";
 import { SERIES } from "../components/charts/palette";
+import { ListToolbar, NoMatches, SortHeader } from "../components/ListControls";
 import { MonthNav } from "../components/MonthNav";
 import {
   Card,
@@ -38,6 +39,7 @@ import {
   label,
   type ExpenseCategory,
 } from "../lib/labels";
+import { useListControls } from "../lib/listControls";
 import { thisMonth } from "../lib/month";
 import { CurrencySelect } from "./Assets";
 import { VariableSpending } from "./Spending";
@@ -249,6 +251,26 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
     }
   };
   const visible = hidePaid ? upcoming.filter((u) => u.status !== "paid") : upcoming;
+  const list = useListControls("fixed-expenses", expenses, {
+    sorts: {
+      name: { label: "Concepto", get: (e) => e.name },
+      category: { label: "Categoría", get: (e) => label(EXPENSE_CATEGORIES, e.category) },
+      // Frecuencia: de la más seguida (semanal) a la más espaciada (anual).
+      frequency: {
+        label: "Frecuencia",
+        get: (e) => MONTHLY_FACTOR[e.frequency] ?? 0,
+        firstDir: "desc",
+      },
+      amount: { label: "Monto", get: (e) => e.amount },
+      monthly: { label: "Al mes", get: (e) => e.amount * (MONTHLY_FACTOR[e.frequency] ?? 1) },
+      day: { label: "Día de pago", get: (e) => e.due_day, firstDir: "asc" },
+    },
+    search: (e) => [e.name, e.notes],
+    filter: (e) => e.category,
+  });
+  const presentCategories = Object.fromEntries(
+    Object.entries(EXPENSE_CATEGORIES).filter(([k]) => expenses.some((e) => e.category === k)),
+  );
 
   const overdue = upcoming.filter((u) => u.status === "overdue");
   const pendingTotal = upcoming
@@ -348,9 +370,16 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
           <EmptyState title="Aún no registras gastos fijos" />
         ) : (
           <>
+            <ListToolbar
+              list={list}
+              placeholder="Buscar gasto fijo"
+              filterLabel="Categoría"
+              filterOptions={presentCategories}
+            />
+            <NoMatches list={list} />
             {/* Teléfono: tarjetas en lugar de la tabla ancha. */}
             <ul className="divide-y divide-line md:hidden">
-              {expenses.map((e) => (
+              {list.rows.map((e) => (
                 <li
                   key={e.id}
                   className={
@@ -382,17 +411,29 @@ function FixedExpenses({ tabs }: { tabs: ReactNode }) {
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-line text-left text-xs text-ink-3">
-                    <th className="py-2 font-medium">Concepto</th>
-                    <th className="py-2 font-medium">Categoría</th>
-                    <th className="py-2 font-medium">Frecuencia</th>
-                    <th className="py-2 text-right font-medium">Monto</th>
-                    <th className="py-2 text-right font-medium">Al mes</th>
-                    <th className="py-2 text-right font-medium">Día</th>
+                    <SortHeader list={list} sortKey="name">
+                      Concepto
+                    </SortHeader>
+                    <SortHeader list={list} sortKey="category">
+                      Categoría
+                    </SortHeader>
+                    <SortHeader list={list} sortKey="frequency">
+                      Frecuencia
+                    </SortHeader>
+                    <SortHeader list={list} sortKey="amount" align="right">
+                      Monto
+                    </SortHeader>
+                    <SortHeader list={list} sortKey="monthly" align="right">
+                      Al mes
+                    </SortHeader>
+                    <SortHeader list={list} sortKey="day" align="right">
+                      Día
+                    </SortHeader>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.map((e) => (
+                  {list.rows.map((e) => (
                     <tr
                       key={e.id}
                       className={

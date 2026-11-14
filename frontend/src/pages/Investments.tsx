@@ -9,6 +9,7 @@ import type { Asset, PositionRow, SecurityKind, SecuritySearchResult } from "../
 import { CaptureCurrencyFields } from "../components/CaptureCurrency";
 import { Donut } from "../components/charts/Charts";
 import { foldOther } from "../components/charts/palette";
+import { ListToolbar, NoMatches, SortHeader } from "../components/ListControls";
 import {
   Card,
   EmptyState,
@@ -21,6 +22,7 @@ import {
 } from "../components/ui";
 import { useCaptureCurrency } from "../lib/captureCurrency";
 import { money, number, pct, shortDate, todayIso } from "../lib/format";
+import { useListControls } from "../lib/listControls";
 import { MissingRatesBanner } from "./Dashboard";
 
 const SIDE = {
@@ -120,6 +122,35 @@ export function InvestmentsPage() {
     [positions],
   );
 
+  const posList = useListControls("positions", positions, {
+    sorts: {
+      symbol: { label: "Instrumento", get: (p) => p.symbol },
+      value: { label: "Valor en MXN", get: (p) => p.value_base },
+      gain: { label: "Ganancia MXN", get: (p) => p.gain_base },
+      gainPct: { label: "Ganancia %", get: (p) => p.gain_base_pct },
+      weight: { label: "Peso", get: (p) => p.weight_pct },
+    },
+    search: (p) => [p.symbol, p.name, p.account],
+    filter: (p) => p.kind,
+  });
+  const presentKinds = Object.fromEntries(
+    Object.entries(KIND_LABEL).filter(([k]) => positions.some((p) => p.kind === k)),
+  );
+  const tradeList = useListControls("trades", trades, {
+    sorts: {
+      date: { label: "Fecha", get: (t) => t.date },
+      symbol: { label: "Instrumento", get: (t) => t.symbol },
+      total: { label: "Total", get: (t) => t.total },
+    },
+    search: (t) => [t.symbol, t.account],
+    filter: (t) => t.side,
+  });
+  const presentSides = Object.fromEntries(
+    Object.entries(SIDE)
+      .filter(([k]) => trades.some((t) => t.side === k))
+      .map(([k, v]) => [k, v.label]),
+  );
+
   if (accounts.length === 0) {
     return (
       <>
@@ -203,9 +234,16 @@ export function InvestmentsPage() {
             </EmptyState>
           ) : (
             <>
+              <ListToolbar
+                list={posList}
+                placeholder="Buscar instrumento"
+                filterLabel="Tipo"
+                filterOptions={presentKinds}
+              />
+              <NoMatches list={posList} />
               {/* Teléfono: tarjetas con valor y ganancia a la vista. */}
               <ul className="divide-y divide-line md:hidden">
-                {positions.map((p) => (
+                {posList.rows.map((p) => (
                   <li key={`${p.account_id}-${p.security_id}`} className="py-3 text-sm">
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="font-semibold">{p.symbol}</p>
@@ -237,24 +275,31 @@ export function InvestmentsPage() {
                 <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr className="border-b border-line text-left text-xs text-ink-3">
-                      <th className="py-2 font-medium">Instrumento</th>
+                      <SortHeader list={posList} sortKey="symbol">
+                        Instrumento
+                      </SortHeader>
                       <th className="py-2 text-right font-medium">Títulos</th>
                       <th className="py-2 text-right font-medium">Costo prom.</th>
                       <th className="py-2 text-right font-medium">Precio</th>
-                      <th className="py-2 text-right font-medium">Valor</th>
-                      <th className="py-2 text-right font-medium">Ganancia</th>
-                      <th
-                        className="py-2 text-right font-medium"
-                        title="Contra lo que pagaste en pesos: incluye el efecto del tipo de cambio"
-                      >
-                        Ganancia MXN
-                      </th>
-                      <th className="py-2 text-right font-medium">Peso</th>
+                      <SortHeader list={posList} sortKey="value" align="right">
+                        Valor
+                      </SortHeader>
+                      <SortHeader list={posList} sortKey="gainPct" align="right">
+                        Ganancia
+                      </SortHeader>
+                      <SortHeader list={posList} sortKey="gain" align="right">
+                        <span title="Contra lo que pagaste en pesos: incluye el efecto del tipo de cambio">
+                          Ganancia MXN
+                        </span>
+                      </SortHeader>
+                      <SortHeader list={posList} sortKey="weight" align="right">
+                        Peso
+                      </SortHeader>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {positions.map((p) => (
+                    {posList.rows.map((p) => (
                       <tr key={`${p.account_id}-${p.security_id}`} className="border-b border-line">
                         <td className="py-2">
                           <p className="font-semibold">{p.symbol}</p>
@@ -312,9 +357,16 @@ export function InvestmentsPage() {
           <EmptyState title="Sin operaciones" />
         ) : (
           <>
+            <ListToolbar
+              list={tradeList}
+              placeholder="Buscar por instrumento o cuenta"
+              filterLabel="Operación"
+              filterOptions={presentSides}
+            />
+            <NoMatches list={tradeList} />
             {/* Teléfono: tarjetas en lugar de la tabla ancha. */}
             <ul className="max-h-[480px] divide-y divide-line overflow-auto md:hidden">
-              {trades.map((t) => (
+              {tradeList.rows.map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-2.5 text-sm">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
@@ -345,17 +397,23 @@ export function InvestmentsPage() {
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-line text-left text-xs text-ink-3">
-                    <th className="py-2 font-medium">Fecha</th>
-                    <th className="py-2 font-medium">Operación</th>
+                    <SortHeader list={tradeList} sortKey="date">
+                      Fecha
+                    </SortHeader>
+                    <SortHeader list={tradeList} sortKey="symbol">
+                      Operación
+                    </SortHeader>
                     <th className="py-2 text-right font-medium">Títulos</th>
                     <th className="py-2 text-right font-medium">Precio</th>
-                    <th className="py-2 text-right font-medium">Total</th>
+                    <SortHeader list={tradeList} sortKey="total" align="right">
+                      Total
+                    </SortHeader>
                     <th className="py-2 font-medium">Cuenta</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {trades.map((t) => (
+                  {tradeList.rows.map((t) => (
                     <tr key={t.id} className="border-b border-line">
                       <td className="tabular py-2 text-ink-3">{shortDate(t.date)}</td>
                       <td className="py-2">

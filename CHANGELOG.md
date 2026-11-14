@@ -6,6 +6,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Agregado
+
+- **Ordenar, buscar y filtrar listas** en Bienes, Gastos (fijos y movimientos), Inversiones
+  (posiciones y operaciones) e Ingresos (fuentes y cobros):
+  - en el escritorio se ordena tocando el encabezado de la columna; en el teléfono, con el
+    selector "Ordenar por";
+  - la búsqueda ignora acentos y mayúsculas;
+  - filtros por tipo, categoría, operación o fuente;
+  - el orden y el filtro se recuerdan en cada dispositivo.
+
 ## [0.6.0] - 2026-11-11
 
 ### Cambiado

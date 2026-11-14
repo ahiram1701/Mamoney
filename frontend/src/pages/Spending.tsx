@@ -31,7 +31,9 @@ import {
 import { money, pct, shortDate, todayIso } from "../lib/format";
 import { SPENDING_CATEGORIES, label } from "../lib/labels";
 import { monthName, thisMonth } from "../lib/month";
+import { ListToolbar, NoMatches } from "../components/ListControls";
 import { MonthNav } from "../components/MonthNav";
+import { useListControls } from "../lib/listControls";
 
 const STATUS_COLOR: Record<BudgetCategoryRow["status"], string> = {
   ok: "var(--series-1)",
@@ -95,6 +97,18 @@ export function VariableSpending({ tabs }: { tabs: ReactNode }) {
   const [importOpen, setImportOpen] = useState(false);
   const remove = useApiMutation<{ id: number }>("DELETE", (b) => `/api/spending/${b.id}`);
   const isCurrent = month === thisMonth();
+  const list = useListControls("spending", items, {
+    sorts: {
+      date: { label: "Fecha", get: (s) => s.date },
+      description: { label: "Descripción", get: (s) => s.description },
+      amount: { label: "Importe", get: (s) => s.amount },
+    },
+    search: (s) => [s.description, s.notes],
+    filter: (s) => s.category,
+  });
+  const presentCategories = Object.fromEntries(
+    Object.entries(SPENDING_CATEGORIES).filter(([k]) => items.some((s) => s.category === k)),
+  );
   const projectedTotal = report?.categories.reduce((s, r) => s + r.projected, 0) ?? 0;
 
   return (
@@ -173,37 +187,50 @@ export function VariableSpending({ tabs }: { tabs: ReactNode }) {
           {items.length === 0 ? (
             <EmptyState title="Sin movimientos" />
           ) : (
-            <ul className="max-h-[560px] divide-y divide-line overflow-auto">
-              {items.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
-                  <span className="tabular w-16 shrink-0 text-xs text-ink-3">
-                    {shortDate(s.date).slice(0, -5)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate">{s.description}</p>
-                    <p className="text-xs text-ink-3">
-                      {label(SPENDING_CATEGORIES, s.category)}
-                      {s.source === "import" && " · importado"}
-                    </p>
-                  </div>
-                  <span className="tabular font-medium">{money(s.amount, s.currency)}</span>
-                  <button
-                    className="btn btn-sm"
-                    aria-label="Editar gasto"
-                    onClick={() => setEditing(s)}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    aria-label="Eliminar gasto"
-                    onClick={() => confirm("¿Eliminar este gasto?") && remove.mutate({ id: s.id })}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {/* Aquí no hay tabla: el selector de orden se muestra también en escritorio. */}
+              <ListToolbar
+                list={list}
+                placeholder="Buscar movimiento"
+                filterLabel="Categoría"
+                filterOptions={presentCategories}
+                alwaysShowSort
+              />
+              <NoMatches list={list} />
+              <ul className="max-h-[560px] divide-y divide-line overflow-auto">
+                {list.rows.map((s) => (
+                  <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
+                    <span className="tabular w-16 shrink-0 text-xs text-ink-3">
+                      {shortDate(s.date).slice(0, -5)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate">{s.description}</p>
+                      <p className="text-xs text-ink-3">
+                        {label(SPENDING_CATEGORIES, s.category)}
+                        {s.source === "import" && " · importado"}
+                      </p>
+                    </div>
+                    <span className="tabular font-medium">{money(s.amount, s.currency)}</span>
+                    <button
+                      className="btn btn-sm"
+                      aria-label="Editar gasto"
+                      onClick={() => setEditing(s)}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      aria-label="Eliminar gasto"
+                      onClick={() =>
+                        confirm("¿Eliminar este gasto?") && remove.mutate({ id: s.id })
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </Card>
       </div>
