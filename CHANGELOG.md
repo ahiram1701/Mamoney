@@ -6,6 +6,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-14
+
 ### Agregado
 
 - **Ordenar, buscar y filtrar listas** en Bienes, Gastos (fijos y movimientos), Inversiones
@@ -250,7 +252,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - Respaldo de la base de datos y exportación/importación JSON.
 - CI/CD con GitHub Actions: pruebas en Ubuntu y Windows, prueba de humo y publicación automática de versiones.
 
-[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ahiram1701/Mamoney/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ahiram1701/Mamoney/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ahiram1701/Mamoney/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ahiram1701/Mamoney/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ahiram1701/Mamoney/compare/v0.4.0...v0.4.1
